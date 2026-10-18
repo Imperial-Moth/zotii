@@ -1,0 +1,3208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Zotii">
+<meta name="theme-color" content="#1B1E23">
+<meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
+<title>Zotii — Conlang Translator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#1B1E23;
+    --panel:#23272E;
+    --panel2:#2B303A;
+    --line:#3B4250;
+    --text:#E9E6DD;
+    --muted:#9AA0AC;
+    --root:#F2C230;
+    --rootdim:#a3872a;
+    --gram:#E8B93C;
+    --gramdim:#8a721f;
+    --bad:#C05656;
+    --p2:#F6D774;
+    --serif: "Iowan Old Style","Palatino Linotype", Palatino, Georgia, serif;
+    --mono: "IBM Plex Mono","JetBrains Mono", ui-monospace, "Courier New", monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 500px at 10% -10%, #262b33 0%, transparent 60%),
+      var(--ink);
+    color:var(--text);
+    font-family:var(--serif);
+    line-height:1.5;
+    padding:32px 20px 80px;
+    padding-top:max(32px, env(safe-area-inset-top));
+    padding-left:max(20px, env(safe-area-inset-left));
+    padding-right:max(20px, env(safe-area-inset-right));
+    padding-bottom:max(80px, env(safe-area-inset-bottom));
+    -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:1080px;margin:0 auto;}
+  header.top{
+    display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px;
+    border-bottom:1px solid var(--line);
+    padding-bottom:18px; margin-bottom:28px;
+  }
+  header.top h1{font-size:2.1rem; margin:0; font-weight:600; letter-spacing:0.01em;}
+  header.top h1 .glyph{color:var(--root);}
+  header.top p{margin:4px 0 0; color:var(--muted); font-size:0.92rem; max-width:560px;}
+  .tag{
+    font-family:var(--mono); font-size:0.72rem; color:var(--gram);
+    border:1px solid var(--gramdim); padding:3px 8px; border-radius:3px;
+    text-transform:uppercase; letter-spacing:0.08em; white-space:nowrap;
+  }
+  .ipa-toggle-label{
+    font-family:var(--mono); font-size:0.68rem; color:var(--muted); display:flex; align-items:center; gap:5px; cursor:pointer; white-space:nowrap;
+  }
+  .ipa-toggle-label input{cursor:pointer;}
+
+  section{margin-bottom:34px;}
+  h2.section-title{
+    font-size:1.0rem; text-transform:uppercase; letter-spacing:0.12em;
+    color:var(--muted); font-family:var(--mono); font-weight:500;
+    margin:0 0 14px; display:flex; align-items:center; gap:10px;
+  }
+  h2.section-title::after{content:"";flex:1;height:1px;background:var(--line);}
+
+  /* ---- Ledger grid (signature element): x = syllable, y = position ---- */
+  .ledger-search-row{display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap;}
+  .ledger-search-row input{
+    flex:1; min-width:220px; background:var(--panel2); border:1px solid var(--line); color:var(--text);
+    padding:8px 10px; border-radius:5px; font-family:var(--serif); font-size:0.9rem;
+  }
+  .ledger-search-row input:focus{outline:none; border-color:var(--gram);}
+  .ledger-search-status{font-family:var(--mono); font-size:0.72rem; color:var(--muted); white-space:nowrap;}
+  .thesaurus-hint{font-family:var(--mono); font-size:0.72rem; margin-top:6px; line-height:1.5; max-width:520px;}
+  .thesaurus-hint.muted{color:var(--muted);}
+  .thesaurus-hint .th-row{margin-top:3px;}
+  .thesaurus-hint .th-warn{color:var(--bad);}
+  .thesaurus-hint .th-related{color:var(--muted);}
+  .thesaurus-hint .muted{color:var(--muted);}
+  .compound-list{
+    border:1px solid var(--line); border-radius:6px; background:var(--panel);
+    max-height:320px; overflow-y:auto;
+  }
+  table.compound-table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:0.8rem;}
+  table.compound-table th{
+    background:var(--panel2); color:var(--gram); text-align:left; padding:8px 10px;
+    font-size:0.68rem; text-transform:uppercase; letter-spacing:0.05em; position:sticky; top:0;
+  }
+  table.compound-table td{padding:7px 10px; border-top:1px solid var(--line); vertical-align:top;}
+  table.compound-table tr:hover td{background:var(--panel2);}
+  .compound-word{color:var(--text); font-family:var(--serif); font-size:0.92rem;}
+  .compound-form{color:var(--root);}
+  .compound-breakdown{color:var(--muted); font-size:0.74rem;}
+  .compound-breakdown .m{color:var(--p2);}
+  .compound-del{
+    background:none; border:1px solid var(--line); color:var(--muted); border-radius:4px;
+    font-family:var(--mono); font-size:0.68rem; padding:3px 7px; cursor:pointer;
+  }
+  .compound-del:hover{color:var(--bad); border-color:var(--bad);}
+  .compound-empty{padding:20px; text-align:center; color:var(--muted); font-size:0.82rem;}
+  .compound-add-box{
+    border:1px solid var(--line); border-left:3px solid var(--root); background:var(--panel);
+    border-radius:6px; padding:16px 18px; margin-bottom:14px;
+  }
+  .compound-add-box .root-name-row label{font-family:var(--mono); font-size:0.66rem; text-transform:uppercase; color:var(--muted); letter-spacing:.06em; margin-right:8px;}
+  .compound-add-actions{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;}
+  .cell.search-match{
+    background:var(--gram); box-shadow:inset 0 0 0 2px var(--gram);
+  }
+  .cell.search-match .wd{color:var(--ink) !important; font-weight:600;}
+  .cell.search-match .syll{color:var(--ink) !important;}
+  .cell.search-related{outline:2px dashed var(--gram); outline-offset:-2px;}
+  .cell.search-related .wd{color:var(--gram) !important; font-weight:600;}
+  .th-link{cursor:pointer; text-decoration:underline dotted; color:var(--text);}
+  .th-link:hover{color:var(--gram);}
+  .ledger-scroll{overflow-x:auto; border:1px solid var(--line); border-radius:6px; background:var(--panel); max-height:420px; overflow-y:auto;}
+  .sheet-zone{
+    margin-top:10px; border:2px dashed var(--line); border-radius:8px; padding:14px 16px;
+    display:flex; flex-wrap:wrap; align-items:center; gap:14px; transition:border-color .15s, background .15s;
+  }
+  .sheet-zone.dragover{border-color:var(--gram); background:var(--panel2);}
+  .sheet-zone-text{flex:1; min-width:220px; font-size:0.8rem; color:var(--muted);}
+  .sheet-zone-text b{color:var(--text);}
+  .sheet-zone-btns{display:flex; gap:8px; flex-wrap:wrap;}
+  .sheet-btn{
+    background:var(--panel2); border:1px solid var(--line); color:var(--text);
+    font-family:var(--mono); font-size:0.72rem; padding:8px 12px; border-radius:5px; cursor:pointer; white-space:nowrap;
+  }
+  .sheet-btn:hover{border-color:var(--gram); color:var(--gram);}
+  .sheet-status{width:100%; font-family:var(--mono); font-size:0.72rem; color:var(--gram); min-height:1.2em;}
+  .sheet-status.err{color:var(--bad);}
+  table.ledger{border-collapse:collapse; width:100%; font-family:var(--mono); font-size:0.72rem;}
+  table.ledger th, table.ledger td{border:1px solid var(--line); padding:0; text-align:center; white-space:nowrap;}
+  table.ledger thead th{background:var(--panel2); color:var(--gram); font-weight:500; position:sticky; top:0; z-index:2;}
+  table.ledger thead tr.cons-row th{padding:5px 2px; font-size:0.66rem; color:var(--root); top:0;}
+  table.ledger thead tr.vow-row th{padding:4px 2px; font-size:0.66rem; color:var(--gram); top:24px;}
+  table.ledger tbody th{
+    background:var(--panel2); color:var(--p2); padding:6px 10px; font-weight:600; text-align:left;
+    position:sticky; left:0; z-index:1; font-size:0.72rem;
+  }
+  .cell{padding:5px 3px; cursor:pointer; transition:background .15s; min-width:46px; position:relative;}
+  .cell .sec-badge{position:absolute; top:1px; right:2px; font-family:var(--mono); font-size:0.5rem; color:var(--p2); line-height:1;}
+  .cell.search-match .sec-badge{color:var(--ink);}
+  .compound-secondary{color:var(--p2); font-family:var(--mono); font-size:0.7rem; margin-top:2px;}
+  .modal-box .modal-field-label{display:block; font-family:var(--mono); font-size:0.66rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:12px 0 4px;}
+  .modal-box .modal-help{font-family:var(--mono); font-size:0.66rem; color:var(--muted); margin:4px 0 12px;}
+  .cell:hover{background:var(--panel2);}
+  .cell .syll{color:var(--muted); font-size:0.62rem; display:block;}
+  .cell .wd{display:block; font-size:0.66rem; margin-top:1px; max-width:52px; overflow:hidden; text-overflow:ellipsis;}
+  .cell.filled .wd{color:var(--text);}
+  .cell.empty .wd{color:var(--line);}
+  .cell.empty .syll{color:#4a5160;}
+  .cell.na{cursor:default; color:#3a4048;}
+  .cell.na:hover{background:transparent;}
+  td.marker-cell{padding:5px 3px; cursor:help; background:#2b2438; min-width:46px;}
+  td.marker-cell:hover{background:#352c47;}
+  td.marker-cell .syll{color:var(--p2); font-size:0.62rem; display:block;}
+  td.marker-cell .wd{color:var(--p2); font-size:0.62rem; display:block; margin-top:1px;}
+
+  .note{
+    font-size:0.82rem; color:var(--muted); background:var(--panel); border:1px solid var(--line);
+    border-radius:6px; padding:12px 14px; margin-top:10px;
+  }
+  .note b{color:var(--text);}
+  .note code{color:var(--gram); font-family:var(--mono); font-size:0.85em;}
+
+  /* ---- Builder ---- */
+  .node{
+    border:1px solid var(--line);
+    border-left:3px solid var(--gramdim);
+    background:var(--panel);
+    border-radius:6px;
+    padding:16px 18px;
+    margin-bottom:14px;
+  }
+  .node.type-verb{border-left-color:var(--gram);}
+  .node.type-noun{border-left-color:var(--root);}
+  .node-head{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;}
+  .role-badge{
+    font-family:var(--mono); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em;
+    padding:2px 7px; border-radius:3px; border:1px solid var(--line); color:var(--muted);
+  }
+  .wt-badge{font-family:var(--mono); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; padding:2px 7px; border-radius:3px;}
+  .wt-badge.verb{color:var(--gram); border:1px solid var(--gramdim);}
+  .wt-badge.noun{color:var(--root); border:1px solid var(--rootdim);}
+  .remove-btn{
+    margin-left:auto; background:none; border:1px solid var(--line); color:var(--muted);
+    font-family:var(--mono); font-size:0.68rem; padding:3px 8px; border-radius:3px; cursor:pointer;
+  }
+  .remove-btn:hover{color:var(--bad); border-color:var(--bad);}
+
+  .root-name-row{display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap;}
+  .root-name-row input[type=text]{
+    background:var(--panel2); border:1px solid var(--line); color:var(--text);
+    padding:8px 10px; border-radius:4px; font-family:var(--serif); font-size:0.95rem; min-width:190px;
+  }
+  .root-name-row label{font-family:var(--mono); font-size:0.66rem; text-transform:uppercase; color:var(--muted); letter-spacing:.06em;}
+
+  .syll-builder{
+    display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;
+    background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:10px 12px; margin-bottom:12px;
+  }
+  .syll-slot{display:flex; flex-direction:column; gap:3px;}
+  .syll-slot label{font-family:var(--mono); font-size:0.62rem; text-transform:uppercase; color:var(--muted); letter-spacing:.05em;}
+  .syll-slot input{
+    background:var(--ink); border:1px solid var(--line); color:var(--text);
+    padding:6px 8px; border-radius:4px; font-family:var(--serif); font-size:0.85rem; width:130px;
+  }
+  .syll-slot .out{font-family:var(--mono); font-size:0.78rem; color:var(--root); min-height:1em;}
+  .syll-remove{
+    background:none; border:1px solid var(--line); color:var(--muted); border-radius:4px;
+    font-family:var(--mono); font-size:0.65rem; padding:3px 6px; cursor:pointer; align-self:flex-start; margin-top:16px;
+  }
+  .syll-add-btn{
+    align-self:flex-start; background:none; border:1px dashed var(--gramdim); color:var(--gram);
+    font-family:var(--mono); font-size:0.7rem; padding:6px 10px; border-radius:4px; cursor:pointer;
+  }
+  .syll-add-btn:disabled{opacity:0.3; cursor:default;}
+  .syll-mode-btn{
+    background:var(--ink); border:1px solid var(--line); color:var(--muted);
+    font-family:var(--mono); font-size:0.65rem; padding:4px 8px; border-radius:4px; cursor:pointer;
+  }
+  .syll-mode-btn.on{color:var(--ink); background:var(--p2); border-color:var(--p2); font-weight:600;}
+  .marker-chip{color:var(--p2) !important;}
+
+  .grammar-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(190px,1fr)); gap:10px 14px; margin-bottom:12px;}
+  .g-field label{display:block; font-family:var(--mono); font-size:0.66rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); margin-bottom:3px;}
+  .g-field select{width:100%; background:var(--panel2); border:1px solid var(--line); color:var(--text); padding:6px 8px; border-radius:4px; font-family:var(--serif); font-size:0.86rem;}
+  .g-field.fixed{opacity:0.75;}
+  .g-field .fixed-val{font-family:var(--mono); font-size:0.8rem; color:var(--gram); padding:6px 0;}
+
+  .word-output{font-family:var(--mono); background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:10px 12px; margin-bottom:12px; font-size:0.95rem;}
+  .word-output .fluent{color:var(--text); font-size:1.15rem; letter-spacing:0.02em;}
+  .word-output .breakdown{color:var(--muted); font-size:0.78rem; margin-top:4px;}
+  .word-output .breakdown .morph{color:var(--gram);}
+  .word-output .breakdown .rootm{color:var(--root);}
+
+  .children-slot{margin-left:18px; padding-left:14px; border-left:1px dashed var(--line);}
+  .add-buttons{display:flex; gap:8px; flex-wrap:wrap;}
+  .add-btn{background:var(--panel2); border:1px dashed var(--line); color:var(--muted); font-family:var(--mono); font-size:0.72rem; padding:6px 10px; border-radius:4px; cursor:pointer;}
+  .add-btn:hover{color:var(--text); border-color:var(--gram);}
+
+  .start-toggle{display:flex; gap:8px; align-items:center; margin-bottom:16px;}
+  .start-toggle button{font-family:var(--mono); font-size:0.78rem; padding:7px 14px; border-radius:4px; border:1px solid var(--line); background:var(--panel); color:var(--muted); cursor:pointer;}
+  .start-toggle button.active{color:var(--ink); background:var(--gram); border-color:var(--gram); font-weight:600;}
+  .reset-btn{font-family:var(--mono); font-size:0.72rem; color:var(--muted); background:none; border:1px solid var(--line); padding:5px 10px; border-radius:4px; cursor:pointer; margin-left:auto;}
+  .reset-btn:hover{color:var(--bad); border-color:var(--bad);}
+
+  .phrase-panel{border:1px solid var(--gramdim); background:linear-gradient(180deg,#232a2f,#1e2328); border-radius:8px; padding:20px 22px;}
+  .phrase-panel .big{font-family:var(--mono); font-size:1.5rem; color:var(--text); letter-spacing:0.02em; word-break:break-word;}
+  .phrase-panel .gloss-line{display:flex; flex-wrap:wrap; gap:14px; margin-top:14px; padding-top:14px; border-top:1px solid var(--line);}
+  .phrase-row{display:flex; align-items:flex-start; gap:10px;}
+  .phrase-row .big{flex:1;}
+  .phrase-row + .phrase-row{margin-top:10px;}
+  .phrase-row .row-tag{flex:0 0 3.6rem; padding-top:0.55rem; font-family:var(--mono); font-size:0.66rem; text-transform:uppercase; color:var(--muted);}
+  .phrase-row.ipa-row .big{color:var(--gram);}
+  .copy-btn{
+    flex-shrink:0; background:var(--panel2); border:1px solid var(--line); color:var(--muted);
+    font-family:var(--mono); font-size:0.68rem; padding:6px 10px; border-radius:4px; cursor:pointer;
+    white-space:nowrap; margin-top:2px;
+  }
+  .copy-btn:hover{color:var(--text); border-color:var(--gram);}
+  .copy-btn.copied{color:var(--ink); background:var(--gram); border-color:var(--gram);}
+  .gloss-word{font-family:var(--mono); font-size:0.8rem;}
+  .gloss-word .top{color:var(--text); display:block;}
+  .gloss-word .bottom{color:var(--muted); display:block; margin-top:2px; font-size:0.72rem;}
+  .gloss-word .bottom .m{color:var(--gram);}
+  .gloss-word .bottom .r{color:var(--root);}
+
+  details.ref{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:10px 14px; margin-top:8px;}
+  details.ref summary{cursor:pointer; font-family:var(--mono); font-size:0.78rem; color:var(--gram);}
+  table.refTable{width:100%; border-collapse:collapse; margin-top:10px; font-size:0.78rem;}
+  table.refTable th, table.refTable td{border-bottom:1px solid var(--line); padding:4px 6px; text-align:left;}
+  table.refTable th{color:var(--muted); font-family:var(--mono); font-size:0.68rem; text-transform:uppercase;}
+  table.refTable td.suf{font-family:var(--mono); color:var(--gram);}
+  ::selection{background:var(--gramdim); color:#fff;}
+
+  /* ---- Ledger cell edit modal ---- */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(10,11,13,0.65); display:flex; align-items:center;
+    justify-content:center; z-index:50; padding:20px;
+  }
+  .modal-box{
+    background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:20px 22px;
+    max-width:380px; width:100%; box-shadow:0 12px 40px rgba(0,0,0,0.4);
+  }
+  .modal-box h3{margin:0 0 4px; font-size:1rem; color:var(--text); font-family:var(--serif);}
+  .modal-box .modal-sub{font-family:var(--mono); font-size:0.72rem; color:var(--muted); margin-bottom:14px;}
+  .modal-box input[type=text]{
+    width:100%; background:var(--panel2); border:1px solid var(--line); color:var(--text);
+    padding:9px 10px; border-radius:5px; font-family:var(--serif); font-size:0.95rem; margin-bottom:14px;
+  }
+  .modal-box input[type=text]:focus{outline:none; border-color:var(--gram);}
+  .modal-actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .modal-btn{
+    font-family:var(--mono); font-size:0.76rem; padding:8px 14px; border-radius:5px; cursor:pointer;
+    border:1px solid var(--line); background:var(--panel2); color:var(--text);
+  }
+  .modal-btn.primary{background:var(--gram); border-color:var(--gram); color:var(--ink); font-weight:600;}
+  .modal-btn.danger{color:var(--bad); border-color:var(--bad); background:none;}
+  .modal-btn.danger:hover{background:var(--bad); color:#fff;}
+  .modal-btn.ghost{background:none; margin-left:auto;}
+
+  /* ---- iPhone / touch fixes ----
+     - momentum scrolling for the scrollable panes
+     - inputs/selects/textareas bumped to 16px so iOS Safari doesn't zoom the page in on focus
+     - slightly bigger tap targets on touch screens
+  */
+  .ledger-scroll, .compound-list{ -webkit-overflow-scrolling:touch; }
+  input, select, textarea, button{ -webkit-tap-highlight-color:transparent; }
+  @media (max-width:768px), (pointer:coarse){
+    #ledger-search, #compound-search, #compound-draft-word, #compound-draft-secondary, #modal-secondary-input, #modal-sec-input,
+    .g-field select, .root-name-row input[type=text], .syll-slot input,
+    #modal-gloss-input, input[type=text], select, textarea{
+      font-size:16px !important;
+    }
+    .sheet-btn, .copy-btn, .add-btn, .compound-del, .syll-remove, .syll-add-btn,
+    .remove-btn, .start-toggle button, .reset-btn, .modal-btn{
+      min-height:40px; padding-top:9px; padding-bottom:9px;
+    }
+    .cell, td.marker-cell{ min-width:50px; padding:7px 4px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <h1><span class="glyph">◆</span> Zotii</h1>
+      <p>Zotii — a logographic conlang built syllable by syllable from root syllables.</p>
+    </div>
+    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span class="tag">130 syllables × 5 positions</span>
+        <button id="undo-btn" class="sheet-btn" disabled title="Undo the last ledger/compound-word change" style="padding:4px 10px; font-size:0.68rem;">↺ undo</button>
+      </div>
+      <label class="ipa-toggle-label">
+        <input type="checkbox" id="ipa-toggle"> show IPA elsewhere too (ledger, compounds, gloss line)
+      </label>
+    </div>
+  </header>
+
+  <section>
+    <h2 class="section-title">Root Ledger</h2>
+    <div class="ledger-search-row">
+      <input type="text" id="ledger-search" placeholder="Search root meanings — related words are found automatically (e.g. &quot;water&quot;)…" autocomplete="off">
+      <span id="ledger-search-status" class="ledger-search-status"></span>
+    </div>
+    <div id="ledger-thesaurus-hint" class="thesaurus-hint"></div>
+    <div id="ledger" class="ledger-scroll"></div>
+    <div id="ledger-sheet-zone" class="sheet-zone">
+      <div class="sheet-zone-text">
+        <b>Spreadsheet sync.</b> Drag an .xlsx/.csv here (or click to browse) to load a root
+        dictionary that mirrors this exact grid — 5 rows for position, one column per syllable —
+        plus a second "Compound Words" tab and a third "Secondary Meanings" tab (see below) in the same file. In Chrome or Edge,
+        importing keeps a live handle to that file, so the button below writes your changes back
+        into it in place instead of downloading a new copy every time; other browsers fall back to
+        a plain download.
+      </div>
+      <div class="sheet-zone-btns">
+        <button class="sheet-btn" id="sheet-browse-btn">import spreadsheet</button>
+        <button class="sheet-btn" id="sheet-download-btn">download spreadsheet</button>
+      </div>
+      <input type="file" id="sheet-file-input" accept=".xlsx,.xls,.csv" style="display:none;">
+      <div id="sheet-status" class="sheet-status"></div>
+    </div>
+    <div class="note">
+      Every root <b>syllable</b> is plain consonant + vowel (13 consonants × 12 vowels = <b>156 syllables</b>. The
+      vowels are <code>a i u e o</code>, the separate vowels <code>ë ü</code> (short only — they
+      can never be lengthened), and the long forms <code>a- i- u- e- o-</code>, written with a
+      hyphen after the vowel so the vowel itself can carry a tone — the ledger's x‑axis). A root
+      <i>word</i> is 1–5 of these syllables in sequence, and <b>the same syllable means something
+      different depending which position it sits in</b> — that's the ledger's y‑axis. Position 1
+      is the head concept; positions 2–5 are modifier slots that narrow it. Example from the
+      brief: <code>si</code> at position 1 = "fire", <code>fu-</code> at position 2 = "do" →
+      <code>sifu-</code> = "burn". Click any cell to assign, reassign, or clear a gloss at that
+      exact (position, syllable) address. Typing an unrecognised word in the builder below no
+      longer creates a root silently — since that's just as often a typo as a new word — it asks
+      first, and only allocates a random open cell in the relevant position's row if you confirm.
+      The <b>↺ undo</b> button in the top right reverses the last ledger or compound-word change if
+      anything goes wrong. The grammar that follows the root is a single
+      complex syllable — never a plain consonant+vowel shape a root could produce — so a word is
+      always unambiguous about where the root ends and the grammar begins.
+    </div>
+    <div class="note">
+      <b>Position markers.</b> The first five slots of the ledger (purple, before the consonant
+      groups start) aren't ordinary meanings — they're the five bare vowels <code>a i u e o</code>
+      with no consonant at all, and they only ever sit in position 1's row. Each one carries no
+      lexical content of its own; it exists purely to tell the syllable that comes after it which
+      position's table to read from (<code>a→1, i→2, u→3, e→4, o→5</code>), overriding whatever
+      the natural 1st/2nd/3rd/4th/5th sequence would otherwise give you. They're for when strict
+      sequential order doesn't work out — e.g. you want a modifier from position 4's table without
+      building through positions 2 and 3 first. Use them from the "add next: marker" control in
+      the phrase builder.
+    </div>
+    <div class="note">
+      <b>Secondary meanings.</b> A root can carry extra meanings beyond its main gloss. Click a
+      cell and fill in <i>Secondary meanings</i> (comma-separated) — the cell then shows a small
+      <code>+n</code> badge and a tooltip. Secondary meanings are searchable in the ledger, appear
+      in the thesaurus hints (as "secondary meaning of …"), and autocomplete in the builder; typing
+      one at the right position resolves to the root that carries it instead of coining a new
+      root. They live separately from the primary gloss, so they never use up a ledger slot or
+      clash with another gloss. Clearing a root also clears its extras (undo restores them).
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-title">Compound Words</h2>
+    <div id="compound-add-panel" class="compound-add-box"></div>
+    <div class="ledger-search-row">
+      <input type="text" id="compound-search" placeholder="Search whole-word labels (e.g. &quot;burn&quot;)…" autocomplete="off">
+      <span id="compound-search-status" class="ledger-search-status"></span>
+    </div>
+    <div id="compound-search-thesaurus-hint" class="thesaurus-hint"></div>
+    <div id="compound-list" class="compound-list"></div>
+    <div class="note">
+      You can build a compound word right here — the same syllable-by-syllable picker as the
+      phrase builder below, just not attached to a verb or noun yet — or you'll get one
+      automatically the moment you give a multi-syllable root a whole-word label down there (like
+      naming <code>si</code>+<code>fu-</code> "burn"). Either way it's tracked in this list so
+      nothing lives invisibly. Compounds are <b>never stored in this program</b> — only in the spreadsheet — so
+      import the spreadsheet each session to load them, and use "update"/"download" to keep any you add here
+      (the page warns you before closing with unsaved compounds). This list lives in the <b>same spreadsheet file</b> as the root
+      ledger above — a second tab named "Compound Words" — and updates in place the same way:
+      import pulls both tabs in together, and "update"/"download" always writes the current
+      version of both. A word's units are stored as plain <code>position:gloss</code> pairs (or
+      <code>marker:position</code> for a redirect), so you can add or edit compounds directly in
+      the spreadsheet too, as long as the syllable glosses they reference already exist on the
+      Root Ledger tab. Plain CSV can only hold one table, so CSV import/export covers the root
+      ledger only — compound words need the .xlsx form. Compound words can carry secondary
+      meanings too: set them in the field above when saving, or with the <i>meanings</i> button on
+      any row. Both kinds are stored on the "Secondary Meanings" tab (<code>root</code> rows are
+      identified by position + syllable, <code>compound</code> rows by word; meanings are separated
+      by <code>;</code>), so they round-trip through the spreadsheet.
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-title">Phrase Builder</h2>
+    <div class="start-toggle">
+      <span style="font-family:var(--mono); font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em;">Start with:</span>
+      <button id="start-verb" class="active">Verb</button>
+      <button id="start-noun">Noun</button>
+      <button class="reset-btn" id="example-btn" style="margin-left:auto;">🎲 example sentence</button>
+      <button class="reset-btn" id="reset-btn">↺ clear phrase</button>
+    </div>
+    <div id="builder"></div>
+  </section>
+
+  <section>
+    <h2 class="section-title">Output</h2>
+    <div id="phrase-panel" class="phrase-panel"></div>
+  </section>
+
+  <section>
+    <h2 class="section-title">How grammar is marked</h2>
+    <div class="note">
+      Every word has 8 grammar categories, written by four mechanisms. A category at its plain
+      baseline is completely silent. Long vowels are written vowel + <code>-</code>, and a tone
+      mark sits on the vowel <i>before</i> the hyphen (<code>á-</code>, <code>à-</code>); ë and ü are
+      never long.
+      Rising / falling are ´ / ` on a, i, u, e, o. The separate vowels <code>ë</code> and
+      <code>ü</code> use the double marks instead, which replace the diaeresis: <code>e̋</code> /
+      <code>ȅ</code> for ë and <code>ű</code> / <code>ȕ</code> for ü.
+      <br><br>
+      <b>1 · Tone on the root's first two syllables</b> (position markers count as syllables). If syllable 2 is a marker vowel right after another vowel (as in <code>kaawe</code>), it just repeats syllable 1's tone, and the syllable-2 tone moves to the next vowel that isn't directly adjacent to another.
+      <b>Verbs:</b> syllable 1 = aspect (rising imperfect, falling commencatory); syllable 2 =
+      stative (rising restrictive, falling comparative; maximal and excessive go to the prefix).
+      <b>Nouns:</b> syllable 1 = case (rising accusative / orig.noun, falling instrumental /
+      pos.noun); syllable 2 = number (rising plural, falling none).
+      <br><br>
+      <b>2 · Coda on the same two syllables</b> (<code>w l m x ʼ</code>).
+      <b>Verbs:</b> syllable 1 = evidentiality (none = empirical, <code>w</code> rational,
+      <code>l</code> abductive, <code>x</code> inductive, <code>m</code> pragmatic, <code>ʼ</code>
+      mystical); syllable 2 = negative + tense (<code>w</code> past, <code>l</code> past negative,
+      <code>x</code> future, <code>m</code> future negative, <code>ʼ</code> negative).
+      <b>Nouns:</b> syllable 1 = genitive (<code>w</code> inherent / accidental, <code>l</code>
+      objectival / identitive, <code>x</code> owned, <code>m</code> nominative, <code>ʼ</code>
+      composive); syllable 2 = negative / individuality / specificity (<code>w</code> negative,
+      <code>l</code> negative + specific, <code>x</code> individual + specific, <code>m</code>
+      individual, <code>ʼ</code> anything else).
+      <br><br>
+      <b>One-syllable roots.</b> If a syllable-2 feature is marked but the root has only one
+      syllable, a position-marker vowel is put in front and becomes syllable 1:
+      <code>ni</code> → <code>ani</code>. The marker is the one for the syllable's own position, so
+      the root's meaning is untouched.
+      <br><br>
+      <b>3 · Prefix consonants.</b> Everything else is a syllable glued to the front of the word;
+      its onset consonant names the option. Verbs: logic (position 1), reflexivity (2), habitual
+      aspect (3), maximal / excessive stative (4). Nouns: logic (1). If an earlier position is
+      silent, the syllable's coda jumps to its position (<code>w</code>→1, <code>l</code>→2,
+      <code>m</code>→3, <code>x</code>→4).
+      <br><br>
+      <b>4 · Prefix vowel pattern.</b> The vowels of the prefix syllables carry <b>mood</b> (verbs)
+      or <b>position</b> (nouns): 1st, 3rd… syllables take the first vowel of the pattern, 2nd,
+      4th… the second. <code>a</code> is the unmarked vowel, and patterns are handed out in order of
+      markedness, so the commonest categories get the simplest patterns:
+      <br>• <b>one slot changed, core vowel</b> — <code>i–a u–a e–a o–a a–i a–u a–e a–o</code>;
+      <br>• <b>one slot changed, peripheral vowel</b> — <code>ë–a ü–a a–ë a–ü</code> (ë and ü are
+      the rarest vowels, so they appear only after the core vowels are used up);
+      <br>• <b>both slots changed, harmonic pair</b> (vowels that share backness or rounding, which
+      is the easier thing to say) — <code>i–e e–i u–o o–u ë–ü ü–ë</code>;
+      <br>• <b>both slots changed, disharmonic pair</b> — <code>i–u u–i e–o o–e</code>.
+      <br>Verb moods use the first 11 patterns; noun positions use the first 16. If the prefix has
+      too few syllables to show the pattern, bare vowels are added.
+      <br><br>
+      <b>Vowel clusters.</b> A word never has three vowels in a row. The <i>third</i> vowel of a
+      run is palatalised — written with an inverted breve (<code>a̯ e̯ i̯ o̯ u̯ ë̯ ü̯</code>) and
+      pronounced with a voiced fricative onset: <code>a̯ e̯</code> = ɣa, ɣe; <code>i̯ ë̯</code> = ʝi, ʝə;
+      <code>o̯ ü̯</code> = ʒo, ʒɰ; <code>u̯</code> = ʝʷu. The onset starts a fresh group, so long runs
+      come out two vowels at a time (V V V̯ V V̯ …), and it works across the prefix / root boundary.
+      <br><br>
+      <b>Tone realization.</b> On a <i>short</i> vowel, rising is simply a level high pitch and
+      falling a level low pitch. Only on a <i>long</i> vowel (two moras) are they real contours: a
+      rising or falling glide.
+      <br><br>
+      <b>Pronunciation.</b> Stress, allophony and the IPA values of every letter are in the
+      <i>IPA pronunciation</i> section below (switch the IPA toggle to see words this way). In the
+      gloss line, parts are joined with <code>+</code>.
+      <br><br>
+      The full category → mechanism → value mapping is below.
+    </div>
+    <h2 class="section-title" style="margin-top:22px;">Grammar reference</h2>
+    <div id="grammar-ref"></div>
+  </section>
+
+  <section>
+    <h2 class="section-title">IPA pronunciation</h2>
+    <div class="note">
+      The IPA toggle shows words as they are pronounced. Every table and example below is generated
+      by the same code the toggle uses, so it always matches. Sounds do not change across word
+      boundaries.
+    </div>
+    <div id="ipa-ref"></div>
+  </section>
+
+</div>
+
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================== PHONOLOGY ============================== */
+  const CONSONANTS = ["t","d","s","z","g","k","ch","j","ç","w","f","v","n"];
+  const PLAIN_V = ["a","i","u","e","o"];
+  // Long vowels are written vowel + "-" (a-, i-, u-, e-, o-). The hyphen goes AFTER the vowel so
+  // the vowel letter itself is free to carry a tone mark (á-, à-, e̋-, ȅ-, ű-, ȕ-).
+  const LONG_MARK = "-";
+  // ë and ü are their own vowels (not e/u): they exist only short and can never take the long
+  // hyphen. Their tone marks are the double marks (e̋ ȅ, ű ȕ), which replace the diaeresis.
+  const UMLAUT_V = ["ë","ü"];
+  const UMLAUT_BASE = {"ë":"e","ü":"u"};
+  const VOWELS = [...PLAIN_V, ...UMLAUT_V, ...PLAIN_V.map(v=>v+LONG_MARK)]; // 12 vowels: 5 short, ë ü, 5 long
+  const VOWEL_LETTERS = "aiueoëü";
+  const GLIDE_MARK = "\u032F";   // combining inverted breve below: a̯ = the vowel made consonantal
+  const isLongV = v => !!v && v.length > 1 && v.endsWith(LONG_MARK);
+  const baseV = v => v ? v[0] : v;
+
+  // Migration for anything saved/imported with the old romanization (th dh hy, macrons).
+  function migrateCode(str){
+    if(str == null) return str;
+    const M = {"ā":"a-","ī":"i-","ū":"u-","ē":"e-","ō":"o-"};
+    return String(str).replace(/th/g,"t").replace(/dh/g,"d").replace(/hy/g,"ç").replace(/[āīūēō]/g, ch => M[ch]);
+  }
+  const POSITIONS = [1,2,3,4,5];
+  const POSITION_LABEL = {1:"1 · head", 2:"2 · modifier", 3:"3 · modifier", 4:"4 · modifier", 5:"5 · modifier"};
+
+  function allSyllables(){
+    const out = [];
+    CONSONANTS.forEach(c => VOWELS.forEach(v => out.push({c,v})));
+    return out; // 130
+  }
+  const SYLLABLES = allSyllables();
+
+  /* ============================== IPA DISPLAY MODE ==============================
+     A global toggle that re-renders every *pure phonetic* string in the app (root syllables,
+     grammar syllables, whole words, whole phrases, the image caption) using real IPA symbols
+     instead of this conlang's plain-Latin romanization. Deliberately narrow in scope: it's only
+     ever applied to strings we know are 100% conlang phonetic content — never to English glosses,
+     labels, or explanatory prose — because several of our romanization letters (g, k, n, s, l...)
+     are also ordinary English letters, and converting those indiscriminately would corrupt
+     ordinary UI text rather than translate it.
+  ============================================================================================= */
+  let ipaMode = false;
+  const IPA_CONSONANT_MAP = {
+    // two-letter tokens first (checked before single letters so "th" never gets read as loose letters)
+    t:"t", d:"d", ch:"tʃ", "ç":"ç", hl:"ɬ", hm:"m̥",
+    s:"s", z:"z", g:"ɡ", k:"k", j:"dʒ", w:"w", f:"f", v:"v", n:"n", l:"l", m:"m",
+  };
+  const IPA_CONSONANT_KEYS = Object.keys(IPA_CONSONANT_MAP).sort((a,b) => b.length - a.length);
+    // Unicode "Combining Diacritical Marks" block (U+0300–U+036F) — covers RISING_MARK/FALLING_MARK
+  // and any future combining mark this conlang might add, not just today's two.
+  function isCombiningMark(ch){
+    if(!ch) return false;
+    const cp = ch.codePointAt(0);
+    return cp >= 0x0300 && cp <= 0x036F;
+  }
+
+  /* IPA output. Two levels:
+       toIPA(text)         broad transcription of one syllable / string: letters -> IPA, tone marks
+                           -> IPA tone marks, coda voicing agreement. No allophony.
+       toIPAWord(pre,root) a whole word: adds stress (first syllable of the root) and the
+                           allophony below. */
+  const STRESS = "\u02C8";
+  const IPA_VOICELESS = new Set(["t","s","k","ch","f","ç","hl","hm"]);
+  const CODA_LETTERS = new Set(["w","l","m","x","\u02BC"]);
+  const BASE_IPA_V = {a:"a", i:"i", u:"u", e:"e", o:"o", "ë":"ə", "ü":"ɰ"};   // ü is the vowel written ɰ in IPA
+  const LAX_IPA_V = {i:"ɪ", u:"ʊ", e:"ɛ", o:"ɔ"};                 // unstressed short vowels
+  const GLIDE_ONSET = {a:"ɣ", e:"ɣ", i:"ʝ", "ë":"ʝ", o:"ʒ", u:"ʝʷ", "ü":"ʒ"}; // cluster-breaker onsets
+
+  function ipaTokens(text){
+    const T = []; let i = 0;
+    while(i < text.length){
+      const key = IPA_CONSONANT_KEYS.find(k => text.startsWith(k, i));
+      if(key){ T.push({k:"c", s:key}); i += key.length; continue; }
+      const ch = text[i];
+      if(VOWEL_LETTERS.includes(ch)){
+        let L = ch, marks = ""; i++;
+        while(i < text.length && isCombiningMark(text[i])){ marks += text[i]; i++; }
+        let long = false;
+        if(text[i] === LONG_MARK){ long = true; i++; }
+        // a double tone mark on e/u can only come from ë/ü
+        if(marks.includes(RISING_DBL) || marks.includes(FALLING_DBL)){ if(L === "e") L = "ë"; else if(L === "u") L = "ü"; }
+        const tone = (marks.includes(RISING_MARK) || marks.includes(RISING_DBL)) ? "rising"
+                   : (marks.includes(FALLING_MARK) || marks.includes(FALLING_DBL)) ? "falling" : null;
+        T.push({k:"v", L, tone, long, glide: marks.includes(GLIDE_MARK)});
+        continue;
+      }
+      if(ch === "x" || ch === "\u02BC"){ T.push({k:"c", s:ch}); i++; continue; }
+      if(ch === STRESS){ T.push({k:"s"}); i++; continue; }
+      T.push({k:"o", s:ch}); i++;
+    }
+    return T;
+  }
+
+  // Codas take the voicing of the consonant that follows (vowel / pause = voiced).
+  // Coda m also takes the place of a following k g (ŋ), f v (ɱ) or ch j (ɲ).
+  function codaIPA(letter, nx, voiceless){
+    if(letter === "w") return voiceless ? "ʍ" : "w";
+    if(letter === "l") return voiceless ? "ɬ" : "l";
+    if(letter === "x") return voiceless ? "x" : "ɣ";   // velar fricative, voicing follows the next consonant
+    if(letter === "\u02BC") return "ʔ";
+    let p = "m";
+    if(nx && nx.k === "c"){
+      if(nx.s === "k" || nx.s === "g") p = "ŋ";
+      else if(nx.s === "f" || nx.s === "v") p = "ɱ";
+      else if(nx.s === "ch" || nx.s === "j") p = "ɲ";
+    }
+    return voiceless ? p + "\u0325" : p;
+  }
+
+  // Tone on a SHORT vowel is level (rising -> high, falling -> low); on a LONG vowel it is a real
+  // contour across the two moras (rising ǎː, falling âː).
+  function toneIPA(tone, long){
+    if(!tone) return "";
+    if(long) return tone === "rising" ? "\u030C" : "\u0302";
+    return tone === "rising" ? "\u0301" : "\u0300";
+  }
+
+  function toIPA(text, allo){
+    if(!text) return text;
+    const T = ipaTokens(text), n = T.length;
+    const nextIdx = j => { j++; while(j < n && T[j].k === "s") j++; return j < n ? j : -1; };
+    let stressedV = -1;
+    if(allo){
+      const s0 = T.findIndex(t => t.k === "s");
+      for(let j = Math.max(s0, 0); j < n; j++){ if(T[j].k === "v"){ stressedV = j; break; } }
+    }
+    // Word-level: a glottal coda (ʼ) after a vowel is not a stop before a voiced consonant, a pause
+    // or the end of the word — it surfaces as creaky voice on the vowel (a̰). Before a voiceless
+    // consonant or a vowel it stays a true glottal stop [ʔ].
+    if(allo){
+      for(let j = 1; j < n; j++){
+        if(T[j].k === "c" && T[j].s === "\u02BC" && T[j-1].k === "v"){
+          const ni = nextIdx(j), nx = ni >= 0 ? T[ni] : null;
+          const keepStop = nx && (nx.k === "v" || (nx.k === "c" && IPA_VOICELESS.has(nx.s)));
+          if(!keepStop){ T[j-1].creak = true; T[j].silent = true; }
+        }
+      }
+    }
+    let out = "";
+    for(let j = 0; j < n; j++){
+      const t = T[j];
+      if(t.k === "s"){ out += STRESS; continue; }
+      if(t.k === "o"){ out += t.s; continue; }
+      if(t.k === "v"){
+        let letter = BASE_IPA_V[t.L];
+        if(allo && j !== stressedV && !t.long && LAX_IPA_V[t.L]) letter = LAX_IPA_V[t.L];
+        // a stressed, vowel-initial root begins with a glottal onset (and so never runs into a prefix vowel)
+        if(allo && j === stressedV && !t.glide && j > 0 && T[j-1].k === "s" && !out.slice(0, -1).endsWith("ʔ")) out += "ʔ";
+        out += (t.glide ? GLIDE_ONSET[t.L] : "") + letter + (t.creak ? "\u0330" : "") + toneIPA(t.tone, t.long) + (t.long ? "ː" : "");
+        continue;
+      }
+      if(t.silent) continue;
+      const ni = nextIdx(j), nx = ni >= 0 ? T[ni] : null;
+      if(CODA_LETTERS.has(t.s) && (t.s === "\u02BC" || !(nx && nx.k === "v"))){
+        out += codaIPA(t.s, nx, !!(nx && nx.k === "c" && IPA_VOICELESS.has(nx.s)));
+        continue;
+      }
+      let sym = IPA_CONSONANT_MAP[t.s] || (t.s === "x" ? "ɣ" : t.s === "\u02BC" ? "ʔ" : t.s);
+      if(allo && nx && nx.k === "v"){
+        if(t.s === "ç" && ["a","o","u","ü"].includes(nx.L)) sym = "x";                    // ç -> x before back vowels
+        if((t.s === "t" || t.s === "k") && ni === stressedV) sym += "ʰ";                   // aspiration, stressed onset
+        if(t.s === "d" && j > 0 && T[j-1].k === "v" && ni !== stressedV) sym = "ɾ";       // unstressed intervocalic d
+      }
+      out += sym;
+    }
+    return out;
+  }
+  // A whole word: stress falls on the first syllable of the root; everything before it (the grammar
+  // prefix) is unstressed. Returns the prefix and root strings separately, stress mark in the root.
+  function toIPAWord(prefix, root){
+    if(!root) return {prefix: toIPA(prefix, true), root: ""};
+    const full = toIPA(prefix + STRESS + root, true);
+    const k = full.indexOf(STRESS);
+    return {prefix: full.slice(0, k), root: full.slice(k)};
+  }
+  // Applies toIPA only when the global toggle is on — use this at every display site instead of
+  // calling toIPA directly, so there's exactly one place that decides whether conversion happens.
+  function ipa(text){ return ipaMode ? toIPA(text) : text; }
+  // For a bare root/word with no prefix (compound forms, previews): full word treatment with stress.
+  function ipaWord(text){ if(!ipaMode || !text) return text; const w = toIPAWord("", text); return w.root; }
+
+  function sKey(c,v){ return c+"|"+v; }
+
+  // Reserved position-marker syllables: bare vowels (no consonant), fixed non-lexical meaning.
+  // Each redirects "which position table does the *next* syllable read from" — for when the
+  // natural 1st/2nd/3rd/4th/5th sequential order doesn't say what you need it to say.
+  const MARKER_VOWELS = ["a","i","u","e","o"];
+  const MARKER_TARGET = {a:1, i:2, u:3, e:4, o:5};
+  function markerVowelForPos(pos){ return MARKER_VOWELS.find(v => MARKER_TARGET[v] === pos) || null; }
+
+  /* ============================== GRAMMAR ==============================
+     Four mechanisms. A category at its plain baseline is always completely silent.
+
+     (1) FUSIONAL TONE, on the root's 1st and 2nd syllables (markers count as syllables).
+         Tone sits on the vowel, BEFORE any length hyphen (á-, à-). Rising/falling are ´ / ` on
+         a i o, and double marks (e̋ ȅ, ű ȕ) on e and u.
+           Verb  syll 1 = aspect   (rising imperfect, falling commencatory)
+                 syll 2 = stative  (rising restrictive, falling comparative)
+           Noun  syll 1 = case     (rising accusative / orig.noun, falling instrumental / pos.noun)
+                 syll 2 = number   (rising plural, falling none)
+     (2) FUSIONAL CODA, on the same two syllables.
+           Verb  syll 1 = evidentiality (default empirical = no coda; w rational, l abductive,
+                          x inductive, m pragmatic, ʼ mystical)
+                 syll 2 = negative + tense combined (w past, l past-neg, x future, m future-neg,
+                          ʼ present-neg)
+           Noun  syll 1 = genitive (w inherent/accidental, l objectival/identitive, x owned,
+                          m nominative, ʼ composive)
+                 syll 2 = negative / individuality / specificity combined (w neg, l neg+specific,
+                          x individual+specific, m individual, ʼ anything else)
+         Syllable-2 TONE avoids consecutive vowels: a marker vowel directly after another vowel
+         repeats that vowel's tone, and the syllable-2 tone is written on the next
+         non-consecutive vowel instead (kaawe: ká-á-we, not káàwe).
+         If the root has only ONE syllable and a syllable-2 feature is marked, a position-marker
+         vowel is inserted BEFORE it (ni -> ani) and becomes syllable 1. The marker used is the
+         one for the syllable's own position, so the meaning of the root is unchanged.
+     (3) PREFIX CONSONANTS: every remaining category is a syllable glued to the front of the word,
+         its onset consonant naming the option; a coda jumps to a later position when earlier
+         ones are silent (w->1 l->2 m->3 x->4).
+     (4) PREFIX VOWEL PATTERN: the vowels of the prefix syllables (1st, 3rd.. take vowel A;
+         2nd, 4th.. take vowel B) carry one more category: mood on verbs, position on nouns.
+         Patterns are ordered so the fewest non-default vowels are used first. If there aren't
+         enough prefix syllables to show the pattern, bare vowels are added out of nowhere.
+     Vowel clusters of 3+ never occur: the third vowel is written with an inverted breve
+     (a̯ e̯ i̯ o̯ u̯ ë̯ ü̯) and pronounced with a voiced fricative onset (see breakVowelClusters).
+  ============================================================================================= */
+
+  const RISING_MARK = "\u0301";    // acute        (a i u e o)
+  const FALLING_MARK = "\u0300";   // grave        (a i u e o)
+  const RISING_DBL = "\u030B";     // double acute (ë ü)  -> e̋ ű
+  const FALLING_DBL = "\u030F";    // double grave (ë ü)  -> ȅ ȕ
+  function toneMarkFor(vowelLetter, tone){
+    if(!tone) return "";
+    const dbl = vowelLetter === "ë" || vowelLetter === "ü";
+    return tone === "rising" ? (dbl ? RISING_DBL : RISING_MARK) : (dbl ? FALLING_DBL : FALLING_MARK);
+  }
+  // v is "a" or "a-": mark goes right after the vowel letter, before the length hyphen.
+  // ë/ü + tone is written e̋ ȅ / ű ȕ (base letter + double mark, no diaeresis).
+  function addTone(v, tone){
+    if(!tone) return v;
+    const L = v[0];
+    return (UMLAUT_BASE[L] || L) + toneMarkFor(L, tone) + v.slice(1);
+  }
+
+  const CODA_FOR_POSITION = {1:"w", 2:"l", 3:"m", 4:"x", 5:"\u02BC"};
+  const GLOTTAL = "\u02BC";
+
+  const PREFIX_ONSETS = [...CONSONANTS, "l", "m", "hl", "hm"];
+
+  // [vowel for 1st/3rd.. prefix syllables, vowel for 2nd/4th..]; "a" = unmarked.
+  // Patterns are used in this order, so the least marked ones go to the first options and the
+  // rarest vowels / most disharmonic pairs are reached last:
+  //   tier 1  one slot changed, to a core vowel (i u e o)         8 patterns
+  //   tier 2  one slot changed, to a peripheral vowel (ë ü)       4
+  //   tier 3  both slots changed, harmonic pairs (same backness / rounding: i–e, u–o, ë–ü)   6
+  //   tier 4  both slots changed, disharmonic pairs (i–u, e–o)    4
+  const VOWEL_PATTERNS = [
+    ["i","a"],["u","a"],["e","a"],["o","a"],
+    ["a","i"],["a","u"],["a","e"],["a","o"],
+    ["ë","a"],["ü","a"],["a","ë"],["a","ü"],
+    ["i","e"],["e","i"],["u","o"],["o","u"],["ë","ü"],["ü","ë"],
+    ["i","u"],["u","i"],["e","o"],["o","e"],
+  ];
+
+  // Combined second-syllable codas
+  const COMBO_FNS = {
+    verbNegTense: g => {
+      const neg = g.negative === "negative";
+      if(g.tense === "past") return neg ? "l" : "w";
+      if(g.tense === "future") return neg ? "m" : "x";
+      return neg ? GLOTTAL : "";
+    },
+    nounCoda2: g => {
+      const neg = g.negative === "negative", ind = g.individuality === "individual", spec = g.specificity === "specific";
+      if(!neg && !ind && !spec) return "";
+      if(neg && !ind && !spec) return "w";
+      if(neg && spec && !ind) return "l";
+      if(ind && spec && !neg) return "x";
+      if(ind && !spec && !neg) return "m";
+      return GLOTTAL; // anything else
+    },
+  };
+  const COMBO_TABLES = {
+    verbNegTense: [["past","w"],["past + negative","l"],["future","x"],["future + negative","m"],["present + negative",GLOTTAL],["present, positive","(none)"]],
+    nounCoda2: [["negative","w"],["negative + specific","l"],["individual + specific","x"],["individual","m"],["anything else (specific alone, negative + individual, …)",GLOTTAL],["nothing marked","(none)"]],
+  };
+
+  // encType: "fuseTone" | "fuseCoda" | "comboCoda" | "prefix" | "vowelPattern"
+  //   fuseTone/fuseCoda/comboCoda: host 1|2.  An option with overflow:true (no tone) is written
+  //   as a prefix syllable at cat.overflowPos instead.  prefix: prefixPos.
+  const VERB_CATEGORIES = [
+    { key:"mood", label:"Mood", def:"declarative", encType:"vowelPattern", options:[
+      {key:"declarative", label:"Declarative (default)"},
+      {key:"exclaimative", label:"Exclaimative"},
+      {key:"uncertain", label:"Uncertain"},
+      {key:"optative", label:"Optative"},
+      {key:"cond_internal", label:"Conditional (internal)"},
+      {key:"cond_external", label:"Conditional (external)"},
+      {key:"interrogative", label:"Interrogative"},
+      {key:"obligative", label:"Obligative"},
+      {key:"modal", label:"Modal"},
+      {key:"potential", label:"Potential"},
+      {key:"permissive", label:"Permissive"},
+      {key:"necessative", label:"Necessative"},
+    ]},
+    { key:"evidentiality", label:"Evidentiality", def:"empirical", encType:"fuseCoda", host:1, options:[
+      {key:"empirical", label:"Empirical (default)"},
+      {key:"rational", label:"Rational", coda:"w"},
+      {key:"abductive", label:"Abductive", coda:"l"},
+      {key:"inductive", label:"Inductive", coda:"x"},
+      {key:"pragmatic", label:"Pragmatic", coda:"m"},
+      {key:"mystical", label:"Mystical", coda:GLOTTAL},
+    ]},
+    { key:"aspect", label:"Aspect", def:"perfect", encType:"fuseTone", host:1, overflowPos:3, options:[
+      {key:"perfect", label:"Perfect (default)"},
+      {key:"imperfect", label:"Imperfect", tone:"rising"},
+      {key:"commencatory", label:"Commencatory", tone:"falling"},
+      {key:"habitual", label:"Habitual (prefix)", overflow:true},
+    ]},
+    { key:"stative", label:"Stative", def:"none", encType:"fuseTone", host:2, overflowPos:4, options:[
+      {key:"none", label:"— (default)"},
+      {key:"restrictive", label:"Restrictive", tone:"rising"},
+      {key:"comparative", label:"Comparative", tone:"falling"},
+      {key:"maximal", label:"Maximal (prefix)", overflow:true},
+      {key:"excessive", label:"Excessive (prefix)", overflow:true},
+    ]},
+    { key:"negative", label:"Negative", def:"positive", encType:"comboCoda", combo:"verbNegTense", host:2, options:[
+      {key:"positive", label:"Positive (default)"},
+      {key:"negative", label:"Negative"},
+    ]},
+    { key:"tense", label:"Tense", def:"present", encType:"comboCoda", combo:"verbNegTense", host:2, options:[
+      {key:"present", label:"Present (default)"},
+      {key:"past", label:"Past"},
+      {key:"future", label:"Future"},
+    ]},
+    { key:"logic", label:"Logic", def:"none", encType:"prefix", prefixPos:1, options:[
+      {key:"none", label:"— (default)"},
+      {key:"and", label:"AND"},
+      {key:"or", label:"OR"},
+      {key:"without", label:"WITHOUT"},
+      {key:"xor", label:"XOR"},
+      {key:"with", label:"WITH"},
+    ]},
+    { key:"reflexivity", label:"Reflexivity", def:"nonreflex", encType:"prefix", prefixPos:2, options:[
+      {key:"nonreflex", label:"Nonreflexive (default)"},
+      {key:"reflexive", label:"Reflexive"},
+      {key:"reciprocal", label:"Reciprocal"},
+    ]},
+  ];
+
+  const NOUN_CATEGORIES = [
+    { key:"position", label:"Position", def:"none", encType:"vowelPattern", options:[
+      {key:"none", label:"— (default)"},
+      {key:"at", label:"At"},
+      {key:"within", label:"Within"},
+      {key:"above", label:"Above"},
+      {key:"below", label:"Below"},
+      {key:"near", label:"Near"},
+      {key:"far", label:"Far"},
+      {key:"beside", label:"Beside"},
+      {key:"surrounding", label:"Surrounding"},
+      {key:"towards", label:"Towards"},
+      {key:"away_from", label:"Away from"},
+      {key:"during", label:"During"},
+      {key:"simultaneous", label:"Simultaneous"},
+      {key:"after", label:"After"},
+      {key:"before", label:"Before"},
+      {key:"at_time_of", label:"At the time of"},
+      {key:"while_happening", label:"While this was happening"},
+    ]},
+    { key:"genitive", label:"Genitive", def:"none", encType:"fuseCoda", host:1, options:[
+      {key:"none", label:"— (default)"},
+      {key:"inherent_accidental", label:"Inherent / accidental", coda:"w"},
+      {key:"objectival_identitive", label:"Objectival / identitive", coda:"l"},
+      {key:"owned", label:"Owned", coda:"x"},
+      {key:"nominative", label:"Nominative", coda:"m"},
+      {key:"composive", label:"Composive", coda:GLOTTAL},
+    ]},
+    { key:"type", label:"Type (case)", def:"nominative", mandatory:true, encType:"fuseTone", host:1, options:[
+      {key:"nominative", label:"Nominative (default)"},
+      {key:"accusative", label:"Accusative / orig.noun", tone:"rising"},
+      {key:"instrumental", label:"Instrumental / pos.noun", tone:"falling"},
+    ]},
+    { key:"number", label:"Number", def:"singular", encType:"fuseTone", host:2, options:[
+      {key:"singular", label:"Singular (default)"},
+      {key:"plural", label:"Plural", tone:"rising"},
+      {key:"none", label:"None (no instances)", tone:"falling"},
+    ]},
+    { key:"negative", label:"Negative", def:"positive", encType:"comboCoda", combo:"nounCoda2", host:2, options:[
+      {key:"positive", label:"Positive (default)"},
+      {key:"negative", label:"Negative"},
+    ]},
+    { key:"individuality", label:"Individuality", def:"none", encType:"comboCoda", combo:"nounCoda2", host:2, options:[
+      {key:"none", label:"— (default)"},
+      {key:"individual", label:"Individual"},
+    ]},
+    { key:"specificity", label:"Specificity", def:"unspecific", encType:"comboCoda", combo:"nounCoda2", host:2, options:[
+      {key:"unspecific", label:"Unspecific (default)"},
+      {key:"specific", label:"Specific"},
+    ]},
+    { key:"logic", label:"Logic", def:"none", encType:"prefix", prefixPos:1, options:[
+      {key:"none", label:"— (default)"},
+      {key:"and", label:"AND"},
+      {key:"or", label:"OR"},
+      {key:"except", label:"EXCEPT"},
+      {key:"same", label:"SAME"},
+    ]},
+  ];
+
+  function catsFor(wordType){ return wordType === "verb" ? VERB_CATEGORIES : NOUN_CATEGORIES; }
+  const optOf = (cat, grammar) => cat.options.find(o => o.key === (grammar[cat.key] || cat.def));
+  const cleanLabel = o => o.label.replace(" (default)","");
+
+  // Works out tone + coda for host syllables 1 and 2, plus a description row per category.
+  function collectFusionFeatures(node){
+    const g = node.grammar, cats = catsFor(node.wordType);
+    const feats = {1:{tone:null, coda:""}, 2:{tone:null, coda:""}, rows:[]};
+    const doneCombo = new Set();
+    cats.forEach(cat => {
+      const opt = optOf(cat, g);
+      if(cat.encType === "fuseTone"){
+        if(opt.tone) feats[cat.host].tone = opt.tone;
+        feats.rows.push({label:cat.label, choice:cleanLabel(opt), host:cat.host, kind:"tone", tone:opt.tone||null, overflow:!!opt.overflow});
+      } else if(cat.encType === "fuseCoda"){
+        if(opt.coda) feats[cat.host].coda = opt.coda;
+        feats.rows.push({label:cat.label, choice:cleanLabel(opt), host:cat.host, kind:"coda", coda:opt.coda||""});
+      } else if(cat.encType === "comboCoda"){
+        if(!doneCombo.has(cat.combo)){
+          doneCombo.add(cat.combo);
+          const coda = COMBO_FNS[cat.combo](g);
+          feats[cat.host].coda = coda;
+          const members = cats.filter(c => c.combo === cat.combo);
+          feats.rows.push({label:members.map(c => c.label).join(" + "), choice:members.map(c => cleanLabel(optOf(c, g))).join(" · "), host:cat.host, kind:"coda", coda});
+        }
+      }
+    });
+    return feats;
+  }
+
+  // Single source of truth for the Latin/IPA renderer: the actual unit list (with an
+  // inserted position marker in front when a lone syllable must host syllable-2 features) and the
+  // tone/coda that lands on each.
+  function computeFusionPlan(node){
+    const seq = node.rootSeq;
+    const feats = collectFusionFeatures(node);
+    const units = seq.map(u => ({...u, filler:false, tone:null, coda:""}));
+    const needSecond = !!(feats[2].tone || feats[2].coda);
+    let prepended = false, fillerVowel = null;
+    if(units.length === 1 && needSecond){
+      const only = units[0];
+      const p = only.type === "marker" ? only.targetPos : only.pos;
+      fillerVowel = markerVowelForPos(p) || "a";
+      units.unshift({type:"marker", v:fillerVowel, targetPos:p, filler:true, tone:null, coda:""});
+      prepended = true;
+    }
+    // codas stay on syllables 1 and 2 exactly as before
+    [1,2].forEach(h => { const u = units[h-1]; if(u){ u.coda = feats[h].coda; } });
+    if(units[0]) units[0].tone = feats[1].tone;
+
+    // TONE ON SYLLABLE 2. A bare marker vowel that directly follows a vowel (no coda between)
+    // is a "consecutive" vowel: giving it its own tone would force a contour change across two
+    // adjacent vowels (káàwe), which is unpronounceable. So:
+    //   * every consecutive marker in the run starting at syllable 2 simply repeats the tone of
+    //     the vowel before it (kaawe -> káá-we stays level across the pair), and
+    //   * the syllable-2 tone moves to the first non-consecutive unit after that run — a content
+    //     syllable, or a marker that a coda separates from the vowel before it.
+    const isConsec = i => i > 0 && units[i].type === "marker" && !units[i-1].coda;
+    let host2 = -1, inherited = 0, tone2Forced = false;
+    if(units.length >= 2){
+      let i = 1;
+      while(i < units.length && isConsec(i)){ units[i].tone = units[i-1].tone; inherited++; i++; }
+      if(i < units.length) host2 = i;
+      else { host2 = units.length - 1; tone2Forced = !!feats[2].tone; }  // only consecutive markers left
+      if(feats[2].tone) units[host2].tone = feats[2].tone;
+    }
+    const tone2Host = host2 + 1;                // 1-based index of the unit that really carries it
+    return {units, feats, prepended, fillerVowel, tone2Host, inherited, tone2Forced};
+  }
+
+  function applyFusion(node){
+    const decomposition = [];
+    if(!node.rootSeq.length) return {text:"", decomposition};
+    const plan = computeFusionPlan(node);
+    const text = plan.units.map(u => {
+      const body = u.type === "marker" ? addTone(u.v, u.tone) : u.c + addTone(u.v, u.tone);
+      return body + u.coda;
+    }).join("");
+    if(plan.prepended){
+      decomposition.push({label:"Second syllable needed", choice:"position marker",
+        realized:`root has only one syllable, so marker "${plan.fillerVowel}" is inserted before it and counts as syllable 1`});
+    }
+    plan.feats.rows.forEach(r => {
+      if(r.overflow) return; // realized in the prefix
+      let realized;
+      if(r.kind === "tone"){
+        if(!r.tone) realized = "level tone (unmarked)";
+        else if(r.host === 2 && plan.tone2Forced){
+          realized = `${r.tone} tone on syllable ${plan.tone2Host} (no non-consecutive vowel available, so a contour is unavoidable)`;
+        } else if(r.host === 2 && plan.tone2Host !== 2){
+          realized = `${r.tone} tone on syllable ${plan.tone2Host} (the vowel${plan.inherited>1?"s":""} in between ${plan.inherited>1?"are consecutive markers and repeat":"is a consecutive marker and repeats"} syllable 1's tone)`;
+        } else realized = `${r.tone} tone on syllable ${r.host}`;
+      }
+      else realized = r.coda ? `coda "${ipa(r.coda)}" on syllable ${r.host}` : "no coda (unmarked)";
+      decomposition.push({label:r.label, choice:r.choice, realized});
+    });
+    return {text, decomposition};
+  }
+
+  // VOWEL-CLUSTER BREAKER. No word may contain 3 vowels in a row. When a third vowel would arrive,
+  // that vowel is written with an inverted breve (a̯ e̯ i̯ o̯ u̯ ë̯ ü̯) and is pronounced with a
+  // voiced fricative onset (a̯ = ɣa, i̯ = ʝi, o̯ = ʒo ...; see GLIDE_ONSET). The onset consonant
+  // starts a fresh group, so long runs come out as: V V V̯ V V̯ V V̯ ... (two vowels at a time).
+  // Works across the prefix/root boundary: the prefix and root strings come back separately.
+  function breakVowelClusters(prefix, root){
+    const boundary = prefix.length, text = prefix + root;
+    let outP = "", outR = "", run = 0, count = 0, i = 0;
+    const put = (str, idx) => { if(idx < boundary) outP += str; else outR += str; };
+    while(i < text.length){
+      const ch = text[i], start = i;
+      if(VOWEL_LETTERS.includes(ch)){
+        i++;
+        let marks = "";
+        while(i < text.length && isCombiningMark(text[i])){ marks += text[i]; i++; }
+        run++;
+        if(run >= 3){ marks += GLIDE_MARK; run = 1; count++; }
+        let tail = "";
+        if(text[i] === LONG_MARK){ tail = LONG_MARK; i++; }
+        put(ch + marks + tail, start);
+      } else { run = 0; put(ch, start); i++; }
+    }
+    return {prefix: outP, root: outR, count};
+  }
+
+  // PREFIX PHRASE: consonant syllables for the remaining categories + vowel pattern (mood/position)
+  function buildPrefixPhrase(node){
+    const wordType = node.wordType, grammar = node.grammar;
+    const cats = catsFor(wordType);
+    const items = [];
+    cats.forEach(cat => {
+      const opt = optOf(cat, grammar);
+      if(cat.encType === "prefix" && opt.key !== cat.def){
+        const nd = cat.options.filter(o => o.key !== cat.def);
+        const idx = nd.findIndex(o => o.key === opt.key);
+        items.push({pos:cat.prefixPos, onset:PREFIX_ONSETS[idx], label:cat.label, choice:cleanLabel(opt)});
+      } else if(cat.encType === "fuseTone" && opt.overflow){
+        const ov = cat.options.filter(o => o.overflow);
+        const idx = ov.findIndex(o => o.key === opt.key);
+        items.push({pos:cat.overflowPos, onset:PREFIX_ONSETS[idx], label:cat.label, choice:cleanLabel(opt)});
+      }
+    });
+    items.sort((a,b) => a.pos - b.pos);
+
+    const patCat = cats.find(c => c.encType === "vowelPattern");
+    const patOpt = optOf(patCat, grammar);
+    let pattern = ["a","a"], patternMarked = false;
+    if(patOpt.key !== patCat.def){
+      const idx = patCat.options.filter(o => o.key !== patCat.def).findIndex(o => o.key === patOpt.key);
+      pattern = VOWEL_PATTERNS[idx]; patternMarked = true;
+    }
+    const needed = pattern[1] !== "a" ? 2 : (pattern[0] !== "a" ? 1 : 0);
+
+    const syllables = [], decomposition = [];
+    let expected = 1;
+    items.forEach(item => {
+      const coda = item.pos === expected ? "" : CODA_FOR_POSITION[item.pos];
+      const vowel = pattern[syllables.length % 2];
+      syllables.push({onset:item.onset, vowel, coda});
+      const syll = item.onset + vowel + coda;
+      decomposition.push({label:item.label, choice:item.choice,
+        realized:`prefix syll. "${ipa(syll)}"${coda ? ` — coda "${ipa(coda)}" jumps to position ${item.pos}` : ` at position ${item.pos}`}`});
+      expected = item.pos + 1;
+    });
+    let carriers = 0;
+    while(syllables.length < needed){
+      syllables.push({onset:"", vowel:pattern[syllables.length % 2], coda:""});
+      carriers++;
+    }
+    if(patternMarked){
+      decomposition.push({label:patCat.label, choice:cleanLabel(patOpt),
+        realized:`vowel pattern ${pattern[0]}–${pattern[1]} (odd prefix syllables ${pattern[0]}, even ${pattern[1]})${carriers ? `; ${carriers} bare vowel${carriers>1?"s":""} added to carry it` : ""}`});
+    } else {
+      decomposition.push({label:patCat.label, choice:cleanLabel(patOpt), realized:"vowel pattern a–a (unmarked)"});
+    }
+
+
+    const text = syllables.map(sy => sy.onset + sy.vowel + sy.coda).join("");
+    const shown = decomposition.filter(d => !/unmarked/.test(d.realized));
+    return {text, decomposition: shown.length ? decomposition : [], syllables};
+  }
+
+  const VERB_SLOTS = [
+    {key:"opt_verb", label:"opt.verb", wordType:"verb"},
+    // pos.noun shares the falling (instrumental) case tone and orig.noun the rising (accusative)
+    // one; the finer spatial/temporal relation is the noun's own Position category.
+    {key:"pos_noun", label:"pos.noun", wordType:"noun", forceCase:"instrumental"},
+    {key:"nom_noun", label:"nom.noun", wordType:"noun", forceCase:"nominative"},
+    {key:"inst_noun", label:"inst.noun", wordType:"noun", forceCase:"instrumental"},
+    {key:"acc_noun", label:"acc.noun", wordType:"noun", forceCase:"accusative"},
+    {key:"orig_noun", label:"orig.noun", wordType:"noun", forceCase:"accusative"},
+    {key:"subj_verb", label:"subj.verb", wordType:"verb"},
+  ];
+  const NOUN_SLOTS = [
+    {key:"verb", label:"verb", wordType:"verb"},
+    {key:"noun", label:"noun", wordType:"noun"},
+  ];
+
+  // Clipboard helper with a manual fallback for sandboxed contexts.
+  async function copyText(text, btn){
+    let ok = false;
+    try{ await navigator.clipboard.writeText(text); ok = true; }
+    catch(e){
+      try{
+        const ta = document.createElement("textarea");
+        ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+      }catch(e2){ ok = false; }
+    }
+    if(btn){
+      const original = btn.textContent;
+      btn.textContent = ok ? "copied ✓" : "copy failed";
+      btn.classList.toggle("copied", ok);
+      setTimeout(() => { btn.textContent = original; btn.classList.remove("copied"); }, 1500);
+    }
+  }
+
+  /* ============================== DICTIONARY STATE ============================== */
+  // POSITION_DICT[pos] : { englishGloss -> {c,v} }   — each position has its own independent 130-slot pool
+  // OCCUPIED[pos]      : Set of "c|v" taken within that position
+  // COMPOUND_DICT      : { englishCompoundGloss -> [ {pos,c,v}, ... ] }  (whole-word cache, ordered)
+  let POSITION_DICT = {1:{},2:{},3:{},4:{},5:{}};
+  let OCCUPIED = {1:new Set(),2:new Set(),3:new Set(),4:new Set(),5:new Set()};
+  let COMPOUND_DICT = {};
+
+  /* ---- Secondary meanings ----
+     Extra meanings a syllable root (at a specific position) or a whole compound word also carries.
+     Kept in their OWN structure — never as extra keys in POSITION_DICT / COMPOUND_DICT — so they
+     can't collide with a primary gloss, steal a ledger slot, or break any lookup that expects one
+     gloss per cell. Roots are keyed by their address ("pos|c|v"), compounds by word.
+       SECONDARY = { syll: { "1|s|i": ["flame","heat"] }, compound: { "burn": ["cook"] } }  */
+  let SECONDARY = {syll:{}, compound:{}};
+  const SECONDARY_MAX_ITEMS = 12, SECONDARY_MAX_LEN = 60;
+  const secKey = (pos,c,v) => pos + "|" + c + "|" + v;
+
+  // Turns free text ("flame, heat; warmth") into a clean, de-duplicated list. Commas, semicolons
+  // and newlines are the only separators, so a meaning can never contain one (which is what keeps
+  // the spreadsheet round-trip safe). The primary gloss is dropped if it was repeated.
+  function parseSecondaryInput(text, primary){
+    const prim = String(primary||"").trim().toLowerCase();
+    const seen = new Set(), out = [];
+    String(text||"").split(/[,;\n\r]+/).forEach(raw => {
+      const t = raw.replace(/[\u0000-\u001f\u007f]/g,"").replace(/\s+/g," ").trim().toLowerCase().slice(0, SECONDARY_MAX_LEN);
+      if(!t || t === prim || seen.has(t)) return;
+      seen.add(t); out.push(t);
+    });
+    return out.slice(0, SECONDARY_MAX_ITEMS);
+  }
+  function secondaryForCell(pos,c,v){ const l = SECONDARY.syll[secKey(pos,c,v)]; return Array.isArray(l) ? l : []; }
+  function secondaryForCompound(w){ const l = SECONDARY.compound[w]; return Array.isArray(l) ? l : []; }
+  function setSecondaryForCell(pos,c,v,list){
+    const k = secKey(pos,c,v);
+    if(list && list.length) SECONDARY.syll[k] = list.slice(); else delete SECONDARY.syll[k];
+  }
+  function setSecondaryForCompound(w,list){
+    if(list && list.length) SECONDARY.compound[w] = list.slice(); else delete SECONDARY.compound[w];
+  }
+  function normalizeSecondary(raw){
+    const out = {syll:{}, compound:{}};
+    if(!raw || typeof raw !== "object") return out;
+    Object.entries(raw.syll||{}).forEach(([k,l]) => { if(Array.isArray(l) && l.length) out.syll[k] = l.map(x=>String(x)); });
+    Object.entries(raw.compound||{}).forEach(([k,l]) => { if(Array.isArray(l) && l.length) out.compound[k] = l.map(x=>String(x)); });
+    return out;
+  }
+  // Drops secondary meanings whose root/compound no longer exists (after an import, a clear, etc.).
+  function pruneSecondary(){
+    Object.keys(SECONDARY.syll).forEach(k => {
+      const [pos,c,v] = k.split("|");
+      if(!POSITIONS.includes(Number(pos)) || !findGlossAt(Number(pos), c, v)) delete SECONDARY.syll[k];
+    });
+    Object.keys(SECONDARY.compound).forEach(w => { if(!COMPOUND_DICT[w]) delete SECONDARY.compound[w]; });
+  }
+  // Primary glosses at this position that carry `term` as a secondary meaning.
+  function primariesBySecondary(pos, term){
+    return Object.entries(POSITION_DICT[pos]).filter(([g,cell]) => secondaryForCell(pos,cell.c,cell.v).includes(term)).map(([g]) => g);
+  }
+
+  /* ============================== UNDO ==============================
+     A general-purpose undo stack for the persisted dictionary data (root ledger +
+     compound words) — the things that are actually saved and where losing work hurts.
+     Every function that mutates POSITION_DICT/OCCUPIED/COMPOUND_DICT calls
+     pushUndoSnapshot() first, capturing a deep copy of the *pre-change* state. The
+     "Undo" button pops the most recent snapshot and restores it.
+  ============================================================================================= */
+  const UNDO_LIMIT = 30;
+  let UNDO_STACK = [];
+
+  function pushUndoSnapshot(){
+    UNDO_STACK.push(JSON.stringify({positionDict:POSITION_DICT, compoundDict:COMPOUND_DICT, secondary:SECONDARY}));
+    if(UNDO_STACK.length > UNDO_LIMIT) UNDO_STACK.shift();
+    refreshUndoButton();
+  }
+
+  function performUndo(){
+    const snap = UNDO_STACK.pop();
+    if(!snap) return;
+    const parsed = JSON.parse(snap);
+    POSITION_DICT = parsed.positionDict;
+    POSITIONS.forEach(p => {
+      OCCUPIED[p] = new Set(Object.values(POSITION_DICT[p]||{}).map(({c,v})=>sKey(c,v)));
+    });
+    COMPOUND_DICT = parsed.compoundDict || {};
+    SECONDARY = normalizeSecondary(parsed.secondary);
+    saveAll();
+    renderAll();
+    refreshUndoButton();
+  }
+
+  function refreshUndoButton(){
+    const btn = document.getElementById("undo-btn");
+    if(!btn) return;
+    btn.disabled = !UNDO_STACK.length;
+    btn.textContent = UNDO_STACK.length ? `↺ undo (${UNDO_STACK.length})` : "↺ undo";
+  }
+
+  const SEED_POS1 = ["person","water","fire","earth","sky","sun","moon","tree","house","road",
+    "mountain","river","sea","food","animal","child","day","night","name","light",
+    "dark","one","many","big","small","good","bad","hot","cold","i","you","he/she","we","they"];
+  const SEED_POS2 = ["do","make","go","come","see","hear","speak","think","know","want",
+    "give","take","love","fear","kill","die","live","walk","run","sit",
+    "stand","sleep","eat","drink","work","not","again","very"];
+
+  function seedIfEmpty(){
+    if(Object.keys(POSITION_DICT[1]).length) return;
+    const cells1 = SYLLABLES.slice();
+    SEED_POS1.forEach((w,i)=>{
+      const {c,v} = cells1[i];
+      POSITION_DICT[1][w] = {c,v};
+      OCCUPIED[1].add(sKey(c,v));
+    });
+    const cells2 = SYLLABLES.slice();
+    SEED_POS2.forEach((w,i)=>{
+      const {c,v} = cells2[i];
+      POSITION_DICT[2][w] = {c,v};
+      OCCUPIED[2].add(sKey(c,v));
+    });
+    // (no demo compound: compounds are held only in the spreadsheet)
+  }
+
+  function findOpenCell(pos){
+    const open = SYLLABLES.filter(({c,v}) => !OCCUPIED[pos].has(sKey(c,v)));
+    if(!open.length) return null;
+    return open[Math.floor(Math.random()*open.length)];
+  }
+
+  // Looks up an existing gloss at this position; if it doesn't exist yet, this is either a
+  // brand-new word or a typo, so it asks before creating anything — silently auto-creating on
+  // every unrecognised gloss made typos permanently (and randomly) occupy real ledger slots.
+  function lookupOrAllocate(pos, gloss){
+    const key = (gloss||"").trim().toLowerCase();
+    if(!key) return null;
+    if(POSITION_DICT[pos][key]) return POSITION_DICT[pos][key];
+    // not a primary gloss — but if exactly one root at this position carries it as a secondary
+    // meaning, that root IS this word; use it instead of coining a duplicate.
+    const viaSecondary = primariesBySecondary(pos, key);
+    if(viaSecondary.length === 1) return POSITION_DICT[pos][viaSecondary[0]];
+    const proceed = confirm(
+      `"${gloss}" isn't in position ${pos}'s ledger yet.\n\n`
+      + `OK — assign it a random open syllable and add it as a new root.\n`
+      + `Cancel — don't create it (good if this was just a typo).`
+    );
+    if(!proceed) return null;
+    const cell = findOpenCell(pos);
+    if(!cell) return null;
+    pushUndoSnapshot();
+    POSITION_DICT[pos][key] = cell;
+    OCCUPIED[pos].add(sKey(cell.c, cell.v));
+    saveAll();
+    return POSITION_DICT[pos][key];
+  }
+
+  function assignSpecific(pos, gloss, c, v){
+    const key = (gloss||"").trim().toLowerCase();
+    if(!key) return false;
+    const taken = OCCUPIED[pos].has(sKey(c,v));
+    const existing = POSITION_DICT[pos][key];
+    if(taken && (!existing || existing.c!==c || existing.v!==v)) return false;
+    pushUndoSnapshot();
+    if(existing) OCCUPIED[pos].delete(sKey(existing.c, existing.v));
+    POSITION_DICT[pos][key] = {c,v};
+    OCCUPIED[pos].add(sKey(c,v));
+    saveAll();
+    return true;
+  }
+
+  // Removes whatever gloss is assigned at this exact (position, syllable) address, freeing the
+  // syllable back up. Does not touch any compound word that already references it — those keep
+  // working, they'll just show "?" for this unit's gloss until it's reassigned.
+  function clearAssignment(pos, c, v){
+    const gloss = findGlossAt(pos, c, v);
+    if(!gloss) return false;
+    pushUndoSnapshot();
+    delete POSITION_DICT[pos][gloss];
+    delete SECONDARY.syll[secKey(pos,c,v)];
+    OCCUPIED[pos].delete(sKey(c,v));
+    saveAll();
+    return true;
+  }
+
+  /* ============================== STORAGE ==============================
+     Persists to the browser's own localStorage, so this works standalone (e.g. opened from an
+     emailed file on a phone) with no dependency on Claude's artifact environment.
+  ============================================================================================= */
+  const LOCAL_STORAGE_PREFIX = "zothian:";
+  window.storage = window.storage || {
+    async get(key){
+      try{ const raw = localStorage.getItem(LOCAL_STORAGE_PREFIX + key); return raw === null ? null : {key, value: raw, shared:false}; }
+      catch(e){ return null; }
+    },
+    async set(key, value){
+      try{ localStorage.setItem(LOCAL_STORAGE_PREFIX + key, value); return {key, value, shared:false}; }
+      catch(e){ return null; }
+    },
+    async delete(key){
+      try{ localStorage.removeItem(LOCAL_STORAGE_PREFIX + key); return {key, deleted:true, shared:false}; }
+      catch(e){ return null; }
+    },
+    async list(prefix){
+      try{
+        const p = LOCAL_STORAGE_PREFIX + (prefix||"");
+        const keys = [];
+        for(let i=0;i<localStorage.length;i++){ const k = localStorage.key(i); if(k && k.startsWith(p)) keys.push(k.slice(LOCAL_STORAGE_PREFIX.length)); }
+        return {keys, prefix, shared:false};
+      }catch(e){ return null; }
+    }
+  };
+
+  async function loadAll(){
+    try{
+      let res = await window.storage.get("zothian-ledger-v2", false);
+      if(!res || !res.value){
+        try{ res = await window.storage.get("ithal-ledger-v2", false); }catch(e){ /* none */ }
+      }
+      if(res && res.value){
+        const parsed = JSON.parse(res.value);
+        if(parsed.positionDict){
+          POSITION_DICT = parsed.positionDict;
+          POSITIONS.forEach(p => {
+            Object.values(POSITION_DICT[p] || {}).forEach(cell => { cell.c = migrateCode(cell.c); cell.v = migrateCode(cell.v); });
+          });
+          POSITIONS.forEach(p=>{
+            OCCUPIED[p] = new Set(Object.values(POSITION_DICT[p]||{}).map(({c,v})=>sKey(c,v)));
+          });
+        }
+        // Compounds are NOT kept in the program: they live only in the spreadsheet's "Compound Words" tab.
+        // (Anything an older version saved here is deliberately ignored, and overwritten on the next save.)
+        COMPOUND_DICT = {};
+        SECONDARY = normalizeSecondary(parsed.secondary);
+        SECONDARY.compound = {};
+        pruneSecondary();
+      }
+    }catch(e){ /* nothing saved yet, or storage unavailable */ }
+    seedIfEmpty();
+    saveAll();
+  }
+  async function saveAll(){
+    try{
+      await window.storage.set("zothian-ledger-v2", JSON.stringify({positionDict:POSITION_DICT, secondary:{syll:SECONDARY.syll, compound:{}}}), false);
+    }catch(e){ /* best effort */ }
+  }
+
+  /* Compounds exist only in memory + the spreadsheet. Track whether memory has changes the file doesn't,
+     so closing the tab can't silently lose compounds that were added or edited here. */
+  let COMPOUND_SYNC_SIG = "";
+  function compoundSig(){ return JSON.stringify(COMPOUND_DICT) + "|" + JSON.stringify(SECONDARY.compound); }
+  function markCompoundsSynced(){ COMPOUND_SYNC_SIG = compoundSig(); }
+  window.addEventListener("beforeunload", (e) => {
+    if(Object.keys(COMPOUND_DICT).length && compoundSig() !== COMPOUND_SYNC_SIG){ e.preventDefault(); e.returnValue = ""; }
+  });
+
+  /* ============================== SPREADSHEET SYNC (root ledger only) ==============================
+     Mirrors the ledger's own layout exactly: one row per position (1–5), one column per syllable,
+     in the same consonant→vowel order the grid renders in. A cell holds the English gloss, or is
+     blank if that syllable/position is unassigned. Import replaces the live dictionary outright
+     (so deleting a cell in the sheet frees that slot). "Update" writes back into the *same* file
+     you imported — via the File System Access API, where supported (Chrome/Edge) — instead of
+     handing you a fresh download every time; it only falls back to a plain download when there's
+     no writable handle to reuse (no file imported yet, drag-and-drop supplied a plain File instead
+     of a handle, permission was refused, or the browser doesn't support the API at all — Firefox
+     and Safari don't, as of this writing).
+  ============================================================================================= */
+  const SHEET_PICKER_TYPES = [{
+    description: "Spreadsheet",
+    accept: {
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+      "application/vnd.ms-excel": [".xls"],
+      "text/csv": [".csv"],
+    },
+  }];
+  let importedFileHandle = null; // FileSystemFileHandle, when the browser/import path supports it
+  let importedFileName = null;
+
+  function syllableCodeList(){
+    // exact same order the ledger table renders columns in: consonant, then vowel
+    const codes = [];
+    CONSONANTS.forEach(c => VOWELS.forEach(v => codes.push({code: c + v, c, v})));
+    return codes;
+  }
+
+  function buildLedgerRows(){
+    const codes = syllableCodeList();
+    const header = ["Position", ...codes.map(s => s.code)];
+    const rows = [header];
+    POSITIONS.forEach(pos => {
+      const reverse = {};
+      Object.entries(POSITION_DICT[pos]).forEach(([word, cell]) => { reverse[sKey(cell.c, cell.v)] = word; });
+      rows.push([pos, ...codes.map(s => reverse[sKey(s.c, s.v)] || "")]);
+    });
+    return rows;
+  }
+
+  const COMPOUND_SHEET_NAME = "Compound Words";
+  const COMPOUND_MAX_UNITS = 8;
+  const SECONDARY_SHEET_NAME = "Secondary Meanings";
+
+  // One row per root/compound that has extras. Roots are identified by Position + Syllable code
+  // (the primary-gloss column is only there so the sheet is readable — it's ignored on import).
+  function buildSecondaryRows(){
+    const rows = [["Kind","Position","Syllable","Word / Primary Gloss","Secondary Meanings"]];
+    Object.keys(SECONDARY.syll).sort().forEach(k => {
+      const [pos,c,v] = k.split("|");
+      const primary = findGlossAt(Number(pos), c, v);
+      if(!primary) return;
+      rows.push(["root", Number(pos), c+v, primary, SECONDARY.syll[k].join("; ")]);
+    });
+    Object.keys(SECONDARY.compound).sort().forEach(w => {
+      if(!COMPOUND_DICT[w]) return;
+      rows.push(["compound", "", "", w, SECONDARY.compound[w].join("; ")]);
+    });
+    return rows;
+  }
+
+  function applySecondaryRows(rows){
+    if(!rows || !rows.length) return null;
+    const header = rows[0].map(h => String(h||"").trim().toLowerCase());
+    const iKind = header.indexOf("kind"), iPos = header.indexOf("position"), iSyl = header.indexOf("syllable");
+    const iWord = header.indexOf("word / primary gloss"), iMean = header.indexOf("secondary meanings");
+    if(iKind < 0 || iMean < 0) return null;
+    const codes = syllableCodeList();
+    const next = {syll:{}, compound:{}};
+    let n = 0;
+    for(let r=1; r<rows.length; r++){
+      const row = rows[r];
+      if(!row || !row.length) continue;
+      const kind = String(row[iKind]||"").trim().toLowerCase();
+      if(kind === "root"){
+        const pos = parseInt(row[iPos], 10);
+        const code = migrateCode(String(row[iSyl]||"").trim());
+        const syl = codes.find(x => x.code === code);
+        if(!POSITIONS.includes(pos) || !syl) continue;
+        const primary = findGlossAt(pos, syl.c, syl.v);
+        if(!primary) continue; // the root this belongs to isn't in the ledger — skip rather than half-import
+        const list = parseSecondaryInput(row[iMean], primary);
+        if(list.length){ next.syll[secKey(pos, syl.c, syl.v)] = list; n++; }
+      } else if(kind === "compound" && iWord >= 0){
+        const word = String(row[iWord]||"").trim().toLowerCase();
+        if(!word || !COMPOUND_DICT[word]) continue;
+        const list = parseSecondaryInput(row[iMean], word);
+        if(list.length){ next.compound[word] = list; n++; }
+      }
+    }
+    SECONDARY = next;
+    return n;
+  }
+
+  // Encodes one root-sequence unit as a plain, re-importable string: a content unit becomes
+  // "position:gloss" (e.g. "1:fire"), a marker becomes "marker:position" (e.g. "marker:3").
+  function encodeCompoundUnit(u){
+    if(u.type === "marker") return `marker:${u.targetPos}`;
+    const gloss = findGlossAt(u.pos, u.c, u.v);
+    return gloss ? `${u.pos}:${gloss}` : "";
+  }
+
+  function decodeCompoundUnit(cell){
+    const s = String(cell||"").trim();
+    if(!s) return null;
+    if(s.toLowerCase().startsWith("marker:")){
+      const targetPos = parseInt(s.slice(7), 10);
+      const v = markerVowelForPos(targetPos);
+      if(!v) return null;
+      return {type:"marker", targetPos, v};
+    }
+    const sep = s.indexOf(":");
+    if(sep < 0) return null;
+    const pos = parseInt(s.slice(0, sep), 10);
+    const gloss = s.slice(sep+1).trim().toLowerCase();
+    if(!POSITIONS.includes(pos) || !gloss) return null;
+    const cellData = POSITION_DICT[pos][gloss];
+    if(!cellData) return null;
+    return {type:"content", pos, c:cellData.c, v:cellData.v};
+  }
+
+  function buildCompoundRows(){
+    const header = ["Word", "Full Form", ...Array.from({length:COMPOUND_MAX_UNITS}, (_,i) => `Unit ${i+1}`)];
+    const rows = [header];
+    Object.keys(COMPOUND_DICT).sort().forEach(word => {
+      const seq = COMPOUND_DICT[word];
+      const fullForm = seq.map(u => u.type==="marker" ? u.v : (u.c+u.v)).join("");
+      const units = seq.slice(0, COMPOUND_MAX_UNITS).map(encodeCompoundUnit);
+      while(units.length < COMPOUND_MAX_UNITS) units.push("");
+      rows.push([word, fullForm, ...units]);
+    });
+    return rows;
+  }
+
+  let LAST_COMPOUND_SKIPPED = 0;
+  function applyCompoundRows(rows){
+    if(!rows || rows.length < 2) return 0; // header only or missing — leave existing compounds alone
+    const header = rows[0].map(h => String(h||"").trim().toLowerCase());
+    const wordCol = header.indexOf("word");
+    if(wordCol < 0) return 0;
+    const unitCols = [];
+    for(let i=0;i<COMPOUND_MAX_UNITS;i++){
+      const idx = header.indexOf(`unit ${i+1}`);
+      if(idx >= 0) unitCols.push(idx);
+    }
+    if(!unitCols.length) return 0;
+
+    const newCompound = {};
+    LAST_COMPOUND_SKIPPED = 0;
+    for(let r=1; r<rows.length; r++){
+      const row = rows[r];
+      if(!row || !row.length) continue;
+      const word = String(row[wordCol]||"").trim().toLowerCase();
+      if(!word) continue;
+      const seq = [];
+      let broken = false;
+      for(const col of unitCols){
+        const raw = row[col];
+        if(raw === undefined || raw === "") break; // units are contiguous — stop at first gap
+        const unit = decodeCompoundUnit(raw);
+        if(!unit){ broken = true; break; }
+        seq.push(unit);
+      }
+      if(broken || !seq.length){ LAST_COMPOUND_SKIPPED++; continue; } // skip rows that don't fully resolve, rather than half-import them
+      newCompound[word] = seq;
+    }
+    COMPOUND_DICT = newCompound;
+    return Object.keys(newCompound).length;
+  }
+
+  function buildLedgerWorkbook(){
+    const rows = buildLedgerRows();
+    const codes = syllableCodeList();
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"] = [{wch:10}, ...codes.map(()=>({wch:9}))];
+    ws["!freeze"] = {xSplit:1, ySplit:1};
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Root Ledger");
+
+    const cRows = buildCompoundRows();
+    const cws = XLSX.utils.aoa_to_sheet(cRows);
+    cws["!cols"] = [{wch:16},{wch:14}, ...Array.from({length:COMPOUND_MAX_UNITS}, ()=>({wch:14}))];
+    cws["!freeze"] = {xSplit:1, ySplit:1};
+    XLSX.utils.book_append_sheet(wb, cws, COMPOUND_SHEET_NAME);
+
+    const sws = XLSX.utils.aoa_to_sheet(buildSecondaryRows());
+    sws["!cols"] = [{wch:10},{wch:9},{wch:10},{wch:22},{wch:40}];
+    sws["!freeze"] = {xSplit:0, ySplit:1};
+    XLSX.utils.book_append_sheet(wb, sws, SECONDARY_SHEET_NAME);
+    return wb;
+  }
+
+  function isCsvName(name){ return /\.csv$/i.test(name||""); }
+
+  // Writes the current ledger state into an already-open FileSystemFileHandle, in whatever
+  // format matches its existing extension (so a .csv stays a .csv, an .xlsx stays an .xlsx).
+  async function writeLedgerToHandle(handle){
+    const perm = await handle.queryPermission({mode:"readwrite"});
+    if(perm !== "granted"){
+      const req = await handle.requestPermission({mode:"readwrite"});
+      if(req !== "granted") throw new Error("write permission refused");
+    }
+    const writable = await handle.createWritable();
+    if(isCsvName(handle.name)){
+      const ws = XLSX.utils.aoa_to_sheet(buildLedgerRows());
+      await writable.write(XLSX.utils.sheet_to_csv(ws));
+    } else {
+      const wb = buildLedgerWorkbook();
+      const buf = XLSX.write(wb, {type:"array", bookType:"xlsx"});
+      await writable.write(buf);
+    }
+    await writable.close();
+    markCompoundsSynced();
+  }
+
+  async function updateOrDownloadLedgerSpreadsheet(){
+    if(importedFileHandle){
+      try{
+        await writeLedgerToHandle(importedFileHandle);
+        setSheetStatus(`Updated ${importedFileName} in place.`, false);
+        return;
+      }catch(err){
+        importedFileHandle = null;
+        refreshSheetButtonLabel();
+        setSheetStatus(`Couldn't write to ${importedFileName} (${err.message}) — downloading a new copy instead.`, true);
+        // fall through to plain download
+      }
+    }
+    const wb = buildLedgerWorkbook();
+    XLSX.writeFile(wb, "zothian-root-ledger.xlsx");
+    markCompoundsSynced();
+    const hint = importedFileName ? "" : " Import a file first (Chrome/Edge) to update it in place next time instead.";
+    setSheetStatus("Downloaded zothian-root-ledger.xlsx." + hint, false);
+  }
+
+  function applyLedgerRows(rows, sourceName){
+    if(!rows.length) throw new Error("empty sheet");
+    const header = rows[0].map(h => String(h||"").trim());
+    const codeToCol = {};
+    header.forEach((h, i) => { if(i>0 && h) codeToCol[migrateCode(h)] = i; });
+    const codes = syllableCodeList();
+    const matchedCols = codes.filter(s => codeToCol[s.code] !== undefined);
+    if(!matchedCols.length) throw new Error("no recognised syllable columns — did the header row get changed?");
+
+    const newDict = {1:{},2:{},3:{},4:{},5:{}};
+    const newOccupied = {1:new Set(),2:new Set(),3:new Set(),4:new Set(),5:new Set()};
+    let posColIdx = header.findIndex(h => h.toLowerCase() === "position");
+    if(posColIdx < 0) posColIdx = 0;
+
+    for(let r=1; r<rows.length; r++){
+      const row = rows[r];
+      if(!row || !row.length) continue;
+      const pos = parseInt(row[posColIdx], 10);
+      if(!POSITIONS.includes(pos)) continue;
+      matchedCols.forEach(s => {
+        const gloss = String(row[codeToCol[s.code]] || "").trim();
+        if(!gloss) return;
+        const key = gloss.toLowerCase();
+        const cellKeyStr = sKey(s.c, s.v);
+        if(newOccupied[pos].has(cellKeyStr)) return; // duplicate assignment in sheet, keep first
+        newDict[pos][key] = {c:s.c, v:s.v};
+        newOccupied[pos].add(cellKeyStr);
+      });
+    }
+
+    POSITION_DICT = newDict;
+    OCCUPIED = newOccupied;
+    saveAll();
+    renderAll();
+    const total = POSITIONS.reduce((sum,p) => sum + Object.keys(POSITION_DICT[p]).length, 0);
+    setSheetStatus(`Loaded ${sourceName} — ${total} root entries across 5 positions.`, false);
+  }
+
+  function importLedgerFromArrayBuffer(buf, name){
+    try{
+      pushUndoSnapshot();
+      const wb = XLSX.read(new Uint8Array(buf), {type:"array"});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
+      applyLedgerRows(rows, name);
+
+      const cws = wb.Sheets[COMPOUND_SHEET_NAME];
+      if(cws){
+        const cRows = XLSX.utils.sheet_to_json(cws, {header:1, defval:""});
+        const n = applyCompoundRows(cRows);
+        saveAll();
+        renderAll();
+        setSheetStatus(document.getElementById("sheet-status").textContent + ` Also loaded ${n} compound word${n===1?"":"s"}` + (LAST_COMPOUND_SKIPPED ? ` (${LAST_COMPOUND_SKIPPED} row${LAST_COMPOUND_SKIPPED===1?"":"s"} skipped: a unit didn't match the ledger).` : "."), false);
+      }
+
+      // secondary meanings tab (optional — older files won't have one)
+      const sws = wb.Sheets[SECONDARY_SHEET_NAME];
+      let nSec = null;
+      if(sws) nSec = applySecondaryRows(XLSX.utils.sheet_to_json(sws, {header:1, defval:""}));
+      pruneSecondary();   // the import replaced the ledger/compounds, so drop extras whose owner vanished
+      saveAll();
+      renderAll();
+      markCompoundsSynced();
+      if(nSec !== null) setSheetStatus(document.getElementById("sheet-status").textContent + ` Also loaded secondary meanings for ${nSec} entr${nSec===1?"y":"ies"}.`, false);
+    }catch(err){
+      setSheetStatus("Couldn't read that file: " + err.message, true);
+    }
+  }
+
+  // Classic path: a plain File object (from <input> or drag-and-drop when no handle is available).
+  // No handle means no write-back later — "update" will fall back to a fresh download for this file.
+  function importLedgerFromFile(file){
+    importedFileHandle = null;
+    importedFileName = file.name;
+    refreshSheetButtonLabel();
+    const reader = new FileReader();
+    reader.onload = (e) => importLedgerFromArrayBuffer(e.target.result, file.name);
+    reader.onerror = () => setSheetStatus("Couldn't read that file.", true);
+    reader.readAsArrayBuffer(file);
+  }
+
+  // Handle-backed path: keeps the FileSystemFileHandle so "update" can write back into this exact
+  // file instead of downloading a new one.
+  async function importLedgerFromHandle(handle){
+    try{
+      const file = await handle.getFile();
+      importedFileHandle = handle;
+      importedFileName = file.name;
+      refreshSheetButtonLabel();
+      const buf = await file.arrayBuffer();
+      importLedgerFromArrayBuffer(buf, file.name);
+    }catch(err){
+      setSheetStatus("Couldn't open that file: " + err.message, true);
+    }
+  }
+
+  function refreshSheetButtonLabel(){
+    const btn = document.getElementById("sheet-download-btn");
+    if(!btn) return;
+    btn.textContent = importedFileHandle ? `update ${importedFileName}` : "download spreadsheet";
+  }
+
+  function setSheetStatus(msg, isErr){
+    const el = document.getElementById("sheet-status");
+    if(!el) return;
+    el.textContent = msg;
+    el.classList.toggle("err", !!isErr);
+  }
+
+  function initSheetZone(){
+    const zone = document.getElementById("ledger-sheet-zone");
+    const input = document.getElementById("sheet-file-input");
+    const browseBtn = document.getElementById("sheet-browse-btn");
+    const downloadBtn = document.getElementById("sheet-download-btn");
+    if(!zone || typeof XLSX === "undefined"){
+      if(zone) setSheetStatus("Spreadsheet library failed to load — check your network settings.", true);
+      return;
+    }
+    const hasFSAccess = "showOpenFilePicker" in window;
+
+    browseBtn.addEventListener("click", async () => {
+      if(hasFSAccess){
+        try{
+          const [handle] = await window.showOpenFilePicker({types: SHEET_PICKER_TYPES});
+          await importLedgerFromHandle(handle);
+        }catch(e){ /* user cancelled the picker — ignore */ }
+      } else {
+        input.click();
+      }
+    });
+    input.addEventListener("change", () => { if(input.files[0]) importLedgerFromFile(input.files[0]); input.value = ""; });
+    downloadBtn.addEventListener("click", updateOrDownloadLedgerSpreadsheet);
+
+    ["dragenter","dragover"].forEach(evt => zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.add("dragover"); }));
+    ["dragleave","drop"].forEach(evt => zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.remove("dragover"); }));
+    zone.addEventListener("drop", async (e) => {
+      const item = e.dataTransfer.items && e.dataTransfer.items[0];
+      if(hasFSAccess && item && typeof item.getAsFileSystemHandle === "function"){
+        try{
+          const handle = await item.getAsFileSystemHandle();
+          if(handle && handle.kind === "file"){ await importLedgerFromHandle(handle); return; }
+        }catch(e){ /* fall through to plain file below */ }
+      }
+      const file = e.dataTransfer.files && e.dataTransfer.files[0];
+      if(file) importLedgerFromFile(file);
+    });
+
+    refreshSheetButtonLabel();
+  }
+
+  /* ============================== TREE MODEL ============================== */
+  let nodeIdSeq = 1;
+  let tree = null;
+
+  function newNode(wordType, role, forceCase){
+    const grammar = {};
+    const cats = wordType === "verb" ? VERB_CATEGORIES : NOUN_CATEGORIES;
+    cats.forEach(cat => { grammar[cat.key] = (forceCase && cat.key === "type") ? forceCase : cat.def; });
+    return { id: nodeIdSeq++, wordType, role, forceCase: forceCase||null, english:"", rootSeq:[], grammar, children:{}, _compoundKey:null, _loadedFromDict:false };
+  }
+  function startTree(wordType){ tree = newNode(wordType, "root"); renderAll(); }
+  function slotsFor(node){ return node.wordType === "verb" ? VERB_SLOTS : NOUN_SLOTS; }
+
+  /* ---- Example sentence generator ----
+     Builds a real sentence out of whatever's already assigned in the ledger — it never invents
+     or auto-creates a root (that's exactly the silent-typo behaviour that got removed), so if the
+     ledger is mostly empty it says so instead of making something up.
+  ============================================================================================= */
+  function randomOptionKey(cat, excludeDefault){
+    const opts = excludeDefault ? cat.options.filter(o => o.key !== cat.def) : cat.options;
+    return opts[Math.floor(Math.random() * opts.length)].key;
+  }
+  function catByKey(cats, key){ return cats.find(c => c.key === key); }
+
+  // Rule 2: evidentiality reads as necessary on every mood except these five — a conditional,
+  // potential, optative or obligative statement isn't reporting a source of knowledge the way a
+  // declarative/interrogative/etc. one is, so marking it there would read as nonsensical.
+  const MOOD_NO_EVIDENTIALITY = new Set(["cond_internal", "cond_external", "potential", "optative", "obligative"]);
+
+  /* Realistic frequencies. Real speech is mostly unmarked, so every category has its own chance
+     of leaving the baseline (p) and, when it does, a weighting over which option it picks.
+     `scale` lets companion clauses be marked more sparsely than the main verb. */
+  function weightedOption(cat, weights){
+    const opts = cat.options.filter(o => o.key !== cat.def);
+    const ws = opts.map(o => (weights && weights[o.key] != null) ? weights[o.key] : 1);
+    let r = Math.random() * ws.reduce((x, y) => x + y, 0);
+    for(let i = 0; i < opts.length; i++){ r -= ws[i]; if(r <= 0) return opts[i].key; }
+    return opts[opts.length - 1].key;
+  }
+  function maybeMark(node, cats, key, p, weights){
+    if(Math.random() < p) node.grammar[key] = weightedOption(catByKey(cats, key), weights);
+  }
+
+  const VERB_FREQ = {
+    mood:        {p:0.35, w:{interrogative:4, exclaimative:2, uncertain:2, optative:2, obligative:2, potential:2}},
+    aspect:      {p:0.45, w:{imperfect:3, habitual:2, commencatory:1.5}},
+    stative:     {p:0.15, w:{comparative:3, restrictive:2, maximal:1, excessive:1}},
+    negative:    {p:0.22},
+    tense:       {p:0.7, w:{past:3, future:1.5}},
+    reflexivity: {p:0.12, w:{reflexive:3, reciprocal:1}},
+  };
+  const NOUN_FREQ = {
+    number:        {p:0.5, w:{plural:6, none:0.5}},
+    specificity:   {p:0.4},
+    individuality: {p:0.22},
+    negative:      {p:0.1},
+  };
+  const EVID_FREQ = {p:0.5, w:{rational:2, abductive:1, inductive:1, pragmatic:1, mystical:0.5}};
+  const POSITION_WEIGHTS = {at:4, within:3, near:2, towards:2, above:1.5, below:1.5, away_from:1.5, before:1.5, after:1.5, beside:1};
+
+  // Verb grammar. Logic is never touched here — it only makes sense with a real verb pairing, so
+  // whoever builds that pairing sets it. Evidentiality is decided after mood (rule 2).
+  function randomizeVerbGrammar(node, scale){
+    scale = scale == null ? 1 : scale;
+    Object.keys(VERB_FREQ).forEach(key => maybeMark(node, VERB_CATEGORIES, key, VERB_FREQ[key].p * scale, VERB_FREQ[key].w));
+    node.grammar.evidentiality = "empirical";
+    if(!MOOD_NO_EVIDENTIALITY.has(node.grammar.mood)){
+      maybeMark(node, VERB_CATEGORIES, "evidentiality", EVID_FREQ.p * scale, EVID_FREQ.w);
+    }
+  }
+
+  // Noun grammar. Logic (connectives), genitive and position are never set here: connectives and
+  // genitive need an actual consecutive noun, and position belongs only on a pos.noun or on a noun
+  // in a chain — each is set explicitly where that structure is built.
+  function randomizeNounGrammar(node, scale){
+    scale = scale == null ? 1 : scale;
+    Object.keys(NOUN_FREQ).forEach(key => maybeMark(node, NOUN_CATEGORIES, key, NOUN_FREQ[key].p * scale, NOUN_FREQ[key].w));
+  }
+  function markPosition(node, p){ maybeMark(node, NOUN_CATEGORIES, "position", p, POSITION_WEIGHTS); }
+
+  function randomGlossAt(pos, exclude){
+    const all = Object.keys(POSITION_DICT[pos] || {});
+    if(!all.length) return null;
+    const pool = exclude ? all.filter(g => !exclude.has(g)) : all;
+    const from = pool.length ? pool : all;
+    return from[Math.floor(Math.random() * from.length)];
+  }
+
+  // Strong bias toward words that already exist: a saved compound word is used as the whole root
+  // most of the time (when any exist); otherwise a single coined root from the ledger. Brand-new
+  // multi-syllable combinations are the rare exception.
+  const COMPOUND_BIAS = 0.8;
+  const EXTRA_SYLLABLE_CHANCE = [0.12, 0.04];   // chance of a 1st / 2nd ad-hoc modifier syllable
+
+  function useCompoundRoot(node, used){
+    const keys = Object.keys(COMPOUND_DICT).filter(k => COMPOUND_DICT[k] && COMPOUND_DICT[k].length && !used.has("compound:" + k));
+    if(!keys.length || Math.random() >= COMPOUND_BIAS) return false;
+    const k = keys[Math.floor(Math.random() * keys.length)];
+    node.rootSeq = COMPOUND_DICT[k].map(u => ({...u}));
+    node.english = k; node._compoundKey = k; node._loadedFromDict = true;
+    used.add("compound:" + k);
+    return true;
+  }
+
+  function buildRandomRoot(node, maxExtra, exclude1){
+    if(exclude1 && useCompoundRoot(node, exclude1)) return true;
+    const headGloss = randomGlossAt(1, exclude1);
+    if(!headGloss) return false;
+    const headCell = POSITION_DICT[1][headGloss];
+    node.rootSeq.push({type:"content", pos:1, c:headCell.c, v:headCell.v});
+    if(exclude1) exclude1.add(headGloss);
+    let pos = nextEffectivePos(node.rootSeq);
+    let added = 0;
+    while(added < maxExtra && pos <= 5 && Math.random() < (EXTRA_SYLLABLE_CHANCE[added] || 0.02)){
+      const gloss = randomGlossAt(pos);
+      if(!gloss) break;
+      const cell = POSITION_DICT[pos][gloss];
+      node.rootSeq.push({type:"content", pos, c:cell.c, v:cell.v});
+      added++;
+      pos = nextEffectivePos(node.rootSeq);
+    }
+    return true;
+  }
+
+  // One of the verb's noun children. A second (consecutive) noun is chained on only sometimes —
+  // it is the only structure that can carry a connective (logic) or a genitive, and one of the
+  // two places position can appear (the other is a pos.noun).
+  function attachNounChild(verbNode, slotKey, usedHeads){
+    const slot = VERB_SLOTS.find(s => s.key === slotKey);
+    const child = newNode(slot.wordType, slot.label, slot.forceCase);
+    if(!buildRandomRoot(child, 1, usedHeads)) return;
+    const isPosRole = slotKey === "pos_noun";
+    randomizeNounGrammar(child);
+    if(isPosRole) markPosition(child, 0.95);       // a pos.noun is almost always a place word
+    verbNode.children[slotKey] = child;
+
+    if(Math.random() < 0.3){
+      const chainChild = newNode("noun", "noun");
+      if(!buildRandomRoot(chainChild, 1, usedHeads)) return;
+      child.children.noun = chainChild;
+      randomizeNounGrammar(chainChild, 1);
+      if(Math.random() < 0.65) chainChild.grammar.genitive = randomOptionKey(catByKey(NOUN_CATEGORIES, "genitive"), true);
+      if(!isPosRole && Math.random() < 0.25) markPosition(child, 0.4);   // "the car near the shop"
+      if(Math.random() < 0.3) markPosition(chainChild, 0.4);
+      // connectives only ever appear because there is a consecutive noun
+      if(Math.random() < 0.4){
+        const holder = Math.random() < 0.5 ? child : chainChild;
+        holder.grammar.logic = randomOptionKey(catByKey(NOUN_CATEGORIES, "logic"), true);
+      }
+    }
+  }
+
+  function generateExampleSentence(){
+    if(!Object.keys(POSITION_DICT[1] || {}).length && !Object.keys(COMPOUND_DICT).length){
+      alert("The root ledger doesn't have any words assigned at position 1 yet — assign a few glosses there first, then try again.");
+      return;
+    }
+    const usedHeads = new Set();
+    const verbNode = newNode("verb", "root");
+    if(!buildRandomRoot(verbNode, 1, usedHeads)){
+      alert("Couldn't find a root to build from — assign a few words in the ledger first.");
+      return;
+    }
+    randomizeVerbGrammar(verbNode, 1);
+    const isStative = verbNode.grammar.stative !== "none";
+
+    if(Math.random() < 0.85) attachNounChild(verbNode, "nom_noun", usedHeads);
+    if(!isStative && Math.random() < 0.5) attachNounChild(verbNode, "acc_noun", usedHeads); // rule 3
+    if(Math.random() < 0.25) attachNounChild(verbNode, "pos_noun", usedHeads);
+    if(Math.random() < 0.10) attachNounChild(verbNode, "orig_noun", usedHeads);
+    if(Math.random() < 0.10) attachNounChild(verbNode, "inst_noun", usedHeads);
+
+    // A companion clause is the only place a verb pairing can occur, so the only place verb-side
+    // logic (a connective) is ever used.
+    if(Math.random() < 0.2){
+      const slotKey = Math.random() < 0.5 ? "opt_verb" : "subj_verb";
+      const slot = VERB_SLOTS.find(s => s.key === slotKey);
+      const child = newNode(slot.wordType, slot.label, slot.forceCase);
+      if(buildRandomRoot(child, 1, usedHeads)){
+        randomizeVerbGrammar(child, 0.8);
+        verbNode.children[slotKey] = child;
+        if(Math.random() < 0.35){
+          const holder = Math.random() < 0.5 ? verbNode : child;
+          holder.grammar.logic = randomOptionKey(catByKey(VERB_CATEGORIES, "logic"), true);
+        }
+      }
+    }
+
+    tree = verbNode;
+    document.getElementById("start-verb").classList.add("active");
+    document.getElementById("start-noun").classList.remove("active");
+    renderAll();
+  }
+
+
+  function findNode(node, id){
+    if(node.id === id) return node;
+    for(const k in node.children){ const f = findNode(node.children[k], id); if(f) return f; }
+    return null;
+  }
+  function removeNode(node, id){
+    for(const k in node.children){
+      if(node.children[k].id === id){ delete node.children[k]; return true; }
+      if(removeNode(node.children[k], id)) return true;
+    }
+    return false;
+  }
+
+  /* ============================== SYLLABLE / WORD COMPUTATION ============================== */
+  function rootSyllableString(node){
+    if(!node.rootSeq.length) return null;
+    return node.rootSeq.map(u => u.type === "marker" ? u.v : (u.c+u.v)).join("");
+  }
+
+  // What position would the *next* content syllable read from, given the sequence so far?
+  // Sequential order increments by 1 after each content syllable; a marker overrides it outright.
+  function nextEffectivePos(rootSeq){
+    let p = 1;
+    rootSeq.forEach(u => {
+      if(u.type === "marker") p = u.targetPos;
+      else p = Math.min(5, u.pos + 1);
+    });
+    return Math.min(5, Math.max(1, p));
+  }
+
+  /* ---- Compound recognition ----
+     Any combination of roots and markers is checked against the saved compound words:
+       exact — the very same units (same positions / markers), i.e. the same word;
+       sound — different breakdown but pronounced identically (the same syllable string), which
+               is just as much "that word" to a listener. */
+  function seqString(seq){ return seq.map(u => u.type === "marker" ? u.v : (u.c + u.v)).join(""); }
+  function seqExact(a, b){
+    if(!a || !b || a.length !== b.length) return false;
+    return a.every((u, i) => {
+      const w = b[i];
+      if((u.type === "marker") !== (w.type === "marker")) return false;
+      return u.type === "marker" ? u.targetPos === w.targetPos : (u.pos === w.pos && u.c === w.c && u.v === w.v);
+    });
+  }
+  function findMatchingCompounds(seq, excludeKey){
+    const out = {exact:[], sound:[]};
+    if(!seq || !seq.length) return out;
+    const str = seqString(seq), ex = (excludeKey || "").trim().toLowerCase();
+    Object.keys(COMPOUND_DICT).forEach(k => {
+      if(k === ex) return;
+      const cs = COMPOUND_DICT[k];
+      if(!cs || !cs.length) return;
+      if(seqExact(seq, cs)) out.exact.push(k);
+      else if(seqString(cs) === str) out.sound.push(k);
+    });
+    return out;
+  }
+
+  function computeWord(node, asIpa){
+    if(asIpa === undefined) asIpa = ipaMode;
+    const rs = rootSyllableString(node);
+    const parts = [];
+    const prefix = buildPrefixPhrase(node);
+    const fusion = rs ? applyFusion(node) : null;
+    const broken = breakVowelClusters(prefix.text, fusion ? fusion.text : "");
+    let prefixText = broken.prefix, rootText = broken.root;
+    if(asIpa){ const w = toIPAWord(prefixText, rootText); prefixText = w.prefix; rootText = w.root; }
+    const clusterRow = broken.count ? [{label:"Vowel cluster", choice:"3+ vowels", realized:`third vowel palatalised (${broken.count}×), e.g. a → a̯`}] : [];
+    if(prefix.text){
+      parts.push({text: prefixText, gloss:"gram.", isRoot:false, isPrefix:true,
+        decomposition: prefix.decomposition.concat(fusion ? clusterRow : [])});
+    }
+    if(rs){
+      const glossBits = node.rootSeq.map(u => {
+        if(u.type === "marker") return "→pos" + u.targetPos;
+        const hit = Object.entries(POSITION_DICT[u.pos]).find(([w,cell]) => cell.c===u.c && cell.v===u.v);
+        return hit ? hit[0] : "?";
+      });
+      const glossText = glossBits.join("+");
+      const recog = node.english ? null : findMatchingCompounds(node.rootSeq).exact[0];
+      parts.push({text: rootText, gloss: (node.english || recog || glossText || "?"), isRoot:true,
+        fusionDecomposition: fusion.decomposition.concat(prefix.text ? [] : clusterRow)});
+    }
+    return parts;
+  }
+
+
+  function traverseOrdered(node, out){
+    out.push(node);
+    slotsFor(node).forEach(slot => { const c = node.children[slot.key]; if(c) traverseOrdered(c, out); });
+  }
+
+  /* ============================== RENDER: LEDGER (x=syllable, y=position) ============================== */
+  // Structural equality for two root-sequences — used to tell whether a builder node's local
+  // edits have actually diverged from the compound-word dictionary entry it was loaded from.
+  function compoundSeqEqual(a, b){
+    if(!a || !b || a.length !== b.length) return false;
+    return a.every((u, i) => {
+      const w = b[i];
+      if(!w || u.type !== w.type) return false;
+      return u.type === "marker" ? u.targetPos === w.targetPos : (u.pos === w.pos && u.c === w.c && u.v === w.v);
+    });
+  }
+
+  function findGlossAt(pos, c, v){
+    const hit = Object.entries(POSITION_DICT[pos]).find(([w,cell]) => cell.c===c && cell.v===v);
+    return hit ? hit[0] : null;
+  }
+
+  /* ============================== THESAURUS (avoid re-coining near-duplicates) ==============
+     Two layers: (1) a local search over every gloss already in the root ledger and compound
+     dictionary — always available, no network — and (2) an optional call to the free, key-less,
+     CORS-enabled Datamuse API (https://api.datamuse.com) for words related in meaning, which are
+     then cross-checked against the local ledger so a genuinely similar existing root surfaces even
+     when its literal wording doesn't match what you typed. Layer 2 degrades silently if there's no
+     network — this is a convenience, never a requirement to use the tool.
+  ============================================================================================= */
+  const escHtml = str => String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+
+  function allCoinedGlosses(){
+    const out = [];
+    POSITIONS.forEach(pos => {
+      Object.entries(POSITION_DICT[pos]).forEach(([gloss, cell]) => {
+        out.push({gloss, pos, c:cell.c, v:cell.v, compound:false});
+        // secondary meanings are searchable too, pointing back at the root that carries them
+        secondaryForCell(pos, cell.c, cell.v).forEach(s => out.push({gloss:s, pos, c:cell.c, v:cell.v, compound:false, secondary:true, primary:gloss}));
+      });
+    });
+    Object.keys(COMPOUND_DICT).forEach(gloss => {
+      out.push({gloss, compound:true});
+      secondaryForCompound(gloss).forEach(s => out.push({gloss:s, compound:true, secondary:true, primary:gloss}));
+    });
+    return out;
+  }
+
+  // Shared label for a coined entry in thesaurus hints (primary or secondary).
+  function coinedLabelHTML(m, bold){
+    const g = bold ? `<b>${escHtml(m.gloss)}</b>` : escHtml(m.gloss);
+    const where = m.compound ? "compound" : `pos ${m.pos}: ${escHtml(ipa(m.c+m.v))}`;
+    if(m.secondary) return `${g} (secondary meaning of <i>${escHtml(m.primary)}</i> — ${where})`;
+    return `${g} (${where})`;
+  }
+  // Removes the entry being edited (and its own secondary meanings) from a match list.
+  function excludeEntry(list, exclude){
+    if(!exclude) return list;
+    const ex = exclude.toLowerCase();
+    return list.filter(m => m.gloss.toLowerCase() !== ex && !(m.secondary && m.primary.toLowerCase() === ex));
+  }
+
+  // Word-level comparison (the old substring test flagged nearly everything against short
+  // glosses like "do" or "at"): two glosses are related when they're identical, share a whole
+  // word of 3+ letters, or one word starts with the other and the shorter is 4+ letters
+  // (fire / fired, burn / burning).
+  const glossTokens = g => g.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  function glossesRelated(a, b){
+    a = a.trim().toLowerCase(); b = b.trim().toLowerCase();
+    if(!a || !b) return false;
+    if(a === b) return true;
+    const ta = glossTokens(a), tb = glossTokens(b);
+    return ta.some(x => x.length >= 3 && tb.some(y => {
+      if(x === y) return true;
+      const [short, long] = x.length <= y.length ? [x, y] : [y, x];
+      return short.length >= 4 && long.startsWith(short);
+    }));
+  }
+
+  function localSimilarMatches(term){
+    const t = term.trim().toLowerCase();
+    if(t.length < 2) return [];
+    return allCoinedGlosses().filter(e => glossesRelated(e.gloss, t));
+  }
+
+  // Returns an array of words, or null if the lookup itself failed (offline / blocked / timeout).
+  async function fetchThesaurusSuggestions(term){
+    const t = term.trim();
+    if(t.length < 2) return [];
+    const ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timer = ctl ? setTimeout(() => ctl.abort(), 5000) : null;
+    try{
+      const res = await fetch(`https://api.datamuse.com/words?ml=${encodeURIComponent(t)}&max=10`, ctl ? {signal: ctl.signal} : undefined);
+      if(!res.ok) return null;
+      const data = await res.json();
+      return Array.isArray(data) ? data.map(d => d.word).filter(Boolean) : null;
+    }catch(e){
+      return null;
+    }finally{
+      if(timer) clearTimeout(timer);
+    }
+  }
+
+  // state: "local" (ledger only, say nothing if empty) | "pending" (waiting on Datamuse) |
+  //        "ok" (Datamuse answered) | "failed" (Datamuse unreachable)
+  function thesaurusHintHTML(term, localMatches, remoteWords, state, opts){
+    opts = opts || {};
+    if(term.trim().length < 2) return "";
+    const termLc = term.trim().toLowerCase();
+    const seen = new Set();
+    const allAlready = [];
+    const addCoined = m => { const k = (m.compound?"c:":"p"+m.pos+":") + (m.secondary?"s:"+m.primary.toLowerCase()+":":"") + m.gloss.toLowerCase(); if(!seen.has(k)){ seen.add(k); allAlready.push(m); } };
+    localMatches.forEach(addCoined);
+    const novelRemote = [];
+    const coinedAll = allCoinedGlosses();
+    (remoteWords || []).forEach(w => {
+      if(w.toLowerCase() === termLc) return;
+      const hits = coinedAll.filter(e => glossesRelated(e.gloss, w));
+      if(hits.length) hits.forEach(addCoined);
+      else if(!novelRemote.some(x => x.toLowerCase() === w.toLowerCase())) novelRemote.push(w);
+    });
+
+    // An exact hit at the position being typed into is normal use, not a duplicate warning.
+    let reuse = null, warn = allAlready;
+    if(opts.pos){
+      reuse = allAlready.find(m => !m.compound && !m.secondary && m.pos === opts.pos && m.gloss.toLowerCase() === termLc) || null;
+      warn = allAlready.filter(m => m !== reuse);
+    }
+    if(opts.exclude) warn = excludeEntry(warn, opts.exclude);
+
+    let html = "";
+    if(reuse) html += `<div class="th-row muted">✓ existing root at pos ${reuse.pos}: ${escHtml(ipa(reuse.c+reuse.v))}</div>`;
+    if(warn.length){
+      html += `<div class="th-row th-warn">⚠ already coined, similar meaning: ` +
+        warn.map(m => coinedLabelHTML(m, true)).join(", ") + `</div>`;
+    }
+    if(novelRemote.length){
+      html += `<div class="th-row th-related">related ideas, not yet coined: ${novelRemote.map(escHtml).join(", ")}</div>`;
+    }
+    if(state === "pending"){
+      html += `<div class="th-row muted">searching for related words…</div>`;
+    } else if(state === "failed"){
+      html += `<div class="th-row muted">(thesaurus lookup unavailable — ledger matches only)</div>`;
+    } else if(state === "ok" && !warn.length && !novelRemote.length && !reuse){
+      html += `<div class="th-row muted">no close matches — looks like a genuinely new word.</div>`;
+    }
+    return html ? `<div class="thesaurus-hint">${html}</div>` : "";
+  }
+
+  // Debounced lookup on a text input. opts: {pos} (typing into a specific position's row),
+  // {exclude} (a gloss to ignore, e.g. the one being edited).
+  // Comma/semicolon-separated lists (secondary meanings): the word under the cursor is the one looked up.
+  function activeListToken(inp){
+    const v = inp.value;
+    const at = (typeof inp.selectionStart === "number") ? inp.selectionStart : v.length;
+    const left = Math.max(v.lastIndexOf(",", at - 1), v.lastIndexOf(";", at - 1));
+    let right = v.length;
+    for(let i = at; i < v.length; i++){ if(v[i] === "," || v[i] === ";"){ right = i; break; } }
+    return v.slice(left + 1, right).trim();
+  }
+
+  // opts: {pos} (typing into a specific position's row), {exclude} (a gloss to ignore, e.g. the one
+  // being edited; may be a function for a live value), {list:true} (comma-separated secondary meanings).
+  function attachThesaurusHint(inputEl, hintEl, opts){
+    if(!inputEl || !hintEl || inputEl.dataset.thesaurusBound) return;
+    inputEl.dataset.thesaurusBound = "1";
+    opts = opts || {};
+    const resolved = () => Object.assign({}, opts, {exclude: typeof opts.exclude === "function" ? opts.exclude() : opts.exclude});
+    const termOf = () => opts.list ? activeListToken(inputEl) : inputEl.value;
+    const localFor = term => excludeEntry(localSimilarMatches(term), resolved().exclude);
+    let debounceTimer = null, requestSeq = 0;
+    const run = () => {
+      const term = termOf();
+      clearTimeout(debounceTimer);
+      const mySeq = ++requestSeq;          // any keystroke invalidates in-flight requests
+      if(term.trim().length < 2){ hintEl.innerHTML = ""; return; }
+      hintEl.innerHTML = thesaurusHintHTML(term, localFor(term), [], "pending", resolved());
+      debounceTimer = setTimeout(async () => {
+        const remote = await fetchThesaurusSuggestions(term);
+        if(mySeq !== requestSeq) return;
+        hintEl.innerHTML = thesaurusHintHTML(term, localFor(term), remote || [], remote === null ? "failed" : "ok", resolved());
+      }, 400);
+    };
+    inputEl.addEventListener("input", run);
+    if(opts.list) inputEl.addEventListener("click", run);   // moving the cursor to another word re-checks that word
+  }
+
+  let ledgerSearchTerm = "";
+  // Thesaurus help for the ledger search: words related in meaning to the search term, fetched
+  // automatically. Cells whose meaning matches the term itself are solid-highlighted; cells whose
+  // meaning matches a related word get a dashed outline.
+  let ledgerRelated = [];          // related words from the thesaurus
+  let ledgerRelatedState = "idle"; // idle | pending | ok | failed
+
+  function renderLedger(){
+    const el = document.getElementById("ledger");
+    const term = ledgerSearchTerm.trim().toLowerCase();
+    let matchCount = 0, relatedCount = 0;
+    const relatedWords = term ? ledgerRelated : [];
+    let html = '<table class="ledger"><thead>';
+    html += '<tr class="cons-row"><th rowspan="2">position ↓ / syllable →</th><th colspan="'+MARKER_VOWELS.length+'">∅ (marker)</th>';
+    CONSONANTS.forEach(c => { html += `<th colspan="${VOWELS.length}">${c}</th>`; });
+    html += '</tr><tr class="vow-row">';
+    MARKER_VOWELS.forEach(v => { html += `<th>${v}</th>`; });
+    CONSONANTS.forEach(() => { VOWELS.forEach(v => { html += `<th>${v}</th>`; }); });
+    html += '</tr></thead><tbody>';
+    POSITIONS.forEach(pos => {
+      html += `<tr><th>${POSITION_LABEL[pos]}</th>`;
+      // reserved marker columns: only meaningful in position 1's row (that's where they live —
+      // the first 5 slots of the ledger). elsewhere they're not applicable.
+      MARKER_VOWELS.forEach(v => {
+        if(pos === 1){
+          html += `<td class="marker-cell" data-marker-v="${v}"><span class="syll">${v}</span><span class="wd">→pos${MARKER_TARGET[v]}</span></td>`;
+        } else {
+          html += `<td class="cell na">—</td>`;
+        }
+      });
+      CONSONANTS.forEach(c => {
+        VOWELS.forEach(v => {
+          const gloss = findGlossAt(pos, c, v);
+          const secs = gloss ? secondaryForCell(pos, c, v) : [];
+          const isMatch = term && gloss && (gloss.toLowerCase().includes(term) || secs.some(x => x.includes(term)));
+          const isRelated = !isMatch && !!gloss && relatedWords.some(w => glossesRelated(gloss, w) || secs.some(x => glossesRelated(x, w)));
+          if(isMatch) matchCount++;
+          if(isRelated) relatedCount++;
+          html += `<td class="cell ${gloss?"filled":"empty"}${isMatch?" search-match":""}${isRelated?" search-related":""}" data-pos="${pos}" data-c="${c}" data-v="${v}"${secs.length ? ` title="${escHtml(gloss + " — also: " + secs.join(", "))}"` : ""}>`
+                + `<span class="syll">${ipa(c+v)}</span>`
+                + `<span class="wd">${gloss ? gloss : "·"}</span>`
+                + (secs.length ? `<span class="sec-badge">+${secs.length}</span>` : "")
+                + `</td>`;
+        });
+      });
+      html += "</tr>";
+    });
+    html += "</tbody></table>";
+    el.innerHTML = html;
+
+    const statusEl = document.getElementById("ledger-search-status");
+    if(statusEl){
+      statusEl.textContent = term ? `${matchCount} match${matchCount===1?"":"es"}` + (relatedCount ? ` · ${relatedCount} related` : "") : "";
+    }
+
+    el.querySelectorAll("td.cell:not(.na)").forEach(td => {
+      td.addEventListener("click", () => {
+        const pos = Number(td.dataset.pos), c = td.dataset.c, v = td.dataset.v;
+        openLedgerCellModal(pos, c, v);
+      });
+    });
+    el.querySelectorAll("td.marker-cell").forEach(td => {
+      td.addEventListener("click", () => {
+        const v = td.dataset.markerV;
+        alert(`Position marker "${v}" — reserved, fixed meaning.\nIt carries no lexical content of its own; it just tells the next syllable in the word "read yourself from position ${MARKER_TARGET[v]}'s table," overriding whatever position sequential order would otherwise give you.`);
+      });
+    });
+  }
+
+  /* ---- Ledger cell edit/clear modal ---- */
+  function closeModal(){
+    const ov = document.getElementById("modal-overlay");
+    if(ov) ov.remove();
+  }
+
+  function openLedgerCellModal(pos, c, v){
+    closeModal();
+    const current = findGlossAt(pos, c, v) || "";
+    const curSecondary = current ? secondaryForCell(pos, c, v) : [];
+    const sylDisplay = ipa(c+v);
+    const ov = document.createElement("div");
+    ov.id = "modal-overlay";
+    ov.className = "modal-overlay";
+    ov.innerHTML = `
+      <div class="modal-box">
+        <h3>Position ${pos} · syllable "${sylDisplay}"</h3>
+        <div class="modal-sub">${current ? `currently assigned: "${current}"` : "currently unassigned"}</div>
+        <input type="text" id="modal-gloss-input" value="${current.replace(/"/g,"&quot;")}" placeholder="English gloss…" autocomplete="off">
+        <div id="modal-thesaurus-hint"></div>
+        <label class="modal-field-label" for="modal-secondary-input">Secondary meanings (optional)</label>
+        <input type="text" id="modal-secondary-input" value="${escHtml(curSecondary.join(", "))}" placeholder="e.g. flame, heat — comma-separated" autocomplete="off">
+        <div id="modal-secondary-thesaurus-hint"></div>
+        <div class="modal-help">Extra meanings this syllable also carries at this position. They show up in the ledger search and thesaurus hints.</div>
+        <div class="modal-actions">
+          <button class="modal-btn primary" id="modal-save-btn">${current ? "save" : "assign"}</button>
+          ${current ? '<button class="modal-btn danger" id="modal-clear-btn">clear</button>' : ""}
+          <button class="modal-btn ghost" id="modal-cancel-btn">cancel</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    ov.addEventListener("click", (e) => { if(e.target === ov) closeModal(); });
+    const input = document.getElementById("modal-gloss-input");
+    input.focus();
+    input.select();
+    attachThesaurusHint(input, document.getElementById("modal-thesaurus-hint"), {exclude: current});
+    if(current.trim().length >= 2){
+      document.getElementById("modal-thesaurus-hint").innerHTML = thesaurusHintHTML(current, excludeEntry(localSimilarMatches(current), current), [], "local", {exclude: current});
+    }
+    const secInput = document.getElementById("modal-secondary-input");
+    attachThesaurusHint(secInput, document.getElementById("modal-secondary-thesaurus-hint"), {list:true, exclude: () => input.value.trim() || current});
+    [input, secInput].forEach(el => el.addEventListener("keydown", (e) => {
+      if(e.key === "Enter") document.getElementById("modal-save-btn").click();
+      if(e.key === "Escape") closeModal();
+    }));
+    document.getElementById("modal-save-btn").addEventListener("click", () => {
+      const trimmed = input.value.trim();
+      if(!trimmed){ closeModal(); return; }
+      const ok = assignSpecific(pos, trimmed, c, v);
+      if(!ok){ alert("That syllable is already taken at this position."); return; }
+      // same undo step as the assignment above, so one ↺ reverts both
+      setSecondaryForCell(pos, c, v, parseSecondaryInput(secInput.value, trimmed));
+      saveAll();
+      closeModal();
+      renderAll();
+    });
+    const clearBtn = document.getElementById("modal-clear-btn");
+    if(clearBtn) clearBtn.addEventListener("click", () => {
+      if(curSecondary.length && !confirm(`Clearing this root also removes its ${curSecondary.length} secondary meaning${curSecondary.length===1?"":"s"} (${curSecondary.join(", ")}).\n\nContinue? (↺ undo can bring them back.)`)) return;
+      clearAssignment(pos, c, v);
+      closeModal();
+      renderAll();
+    });
+    document.getElementById("modal-cancel-btn").addEventListener("click", closeModal);
+  }
+
+  // Scrolls the first highlighted match into view — called only right after the search box
+  // itself changes, not on every unrelated re-render, so the ledger doesn't jump around while
+  // you're just using the phrase builder.
+  function scrollToFirstLedgerMatch(){
+    const el = document.getElementById("ledger");
+    if(!el) return;
+    const first = el.querySelector("td.cell.search-match") || el.querySelector("td.cell.search-related");
+    if(first && first.scrollIntoView) first.scrollIntoView({block:"center", inline:"center", behavior:"smooth"});
+  }
+
+  // Hint under the ledger search box: related words that are already coined (click one to search
+  // for it) and related ideas that have no root yet.
+  function ledgerThesaurusHTML(term){ return searchThesaurusHTML(term, ledgerRelated, ledgerRelatedState); }
+  function searchThesaurusHTML(term, relatedWords, relatedState){
+    if(term.trim().length < 2) return "";
+    const termLc = term.trim().toLowerCase();
+    let html = "";
+    const coined = [], seen = new Set();
+    const addCoined = m => { const k = (m.compound ? "c:" : "p" + m.pos + ":") + (m.secondary ? "s:" + m.primary.toLowerCase() + ":" : "") + m.gloss.toLowerCase(); if(!seen.has(k)){ seen.add(k); coined.push(m); } };
+    localSimilarMatches(term).forEach(addCoined);
+    const uncoined = [];
+    const coinedAll = allCoinedGlosses();
+    relatedWords.forEach(w => {
+      if(w.toLowerCase() === termLc) return;
+      const hits = coinedAll.filter(e => glossesRelated(e.gloss, w));
+      if(hits.length) hits.forEach(addCoined);
+      else if(!uncoined.some(x => x.toLowerCase() === w.toLowerCase())) uncoined.push(w);
+    });
+    const shown = coined.filter(m => m.secondary || m.gloss.toLowerCase() !== termLc);
+    if(shown.length){
+      html += `<div class="th-row">related, already in the language: ` + shown.map(m => {
+        const label = coinedLabelHTML(m, false);
+        return `<span class="th-link" data-q="${escHtml(m.gloss)}">${label}</span>`;
+      }).join(", ") + `</div>`;
+    }
+    if(uncoined.length) html += `<div class="th-row th-related">related ideas, not yet coined: ${uncoined.map(escHtml).join(", ")}</div>`;
+    if(relatedState === "pending") html += `<div class="th-row muted">searching for related words…</div>`;
+    else if(relatedState === "failed") html += `<div class="th-row muted">(online thesaurus unavailable — showing matches from the ledger and secondary meanings only)</div>`;
+    else if(relatedState === "ok" && !shown.length && !uncoined.length) html += `<div class="th-row muted">no related words found.</div>`;
+    return html;
+  }
+  function renderLedgerHint(){
+    const el = document.getElementById("ledger-thesaurus-hint");
+    if(el) el.innerHTML = ledgerThesaurusHTML(ledgerSearchTerm);
+  }
+
+  function initLedgerSearch(){
+    const input = document.getElementById("ledger-search");
+    if(!input) return;
+    const hintEl = document.getElementById("ledger-thesaurus-hint");
+    let timer = null, seq = 0;
+    input.addEventListener("input", (e) => {
+      ledgerSearchTerm = e.target.value;
+      const term = ledgerSearchTerm.trim();
+      clearTimeout(timer);
+      const mySeq = ++seq;              // every keystroke invalidates in-flight lookups
+      ledgerRelated = [];
+      ledgerRelatedState = term.length >= 2 ? "pending" : "idle";
+      renderLedger();
+      renderLedgerHint();
+      scrollToFirstLedgerMatch();
+      if(term.length < 2) return;
+      timer = setTimeout(async () => {
+        const words = await fetchThesaurusSuggestions(term);
+        if(mySeq !== seq) return;
+        ledgerRelated = words || [];
+        ledgerRelatedState = words === null ? "failed" : "ok";
+        renderLedger();
+        renderLedgerHint();
+        if(!document.querySelector("#ledger td.cell.search-match")) scrollToFirstLedgerMatch();
+      }, 400);
+    });
+    if(hintEl) hintEl.addEventListener("click", (e) => {
+      const link = e.target.closest(".th-link");
+      if(!link) return;
+      input.value = link.dataset.q;
+      input.dispatchEvent(new Event("input"));
+    });
+  }
+
+  /* ============================== RENDER: COMPOUND WORDS ============================== */
+  let compoundSearchTerm = "";
+  let compoundRelated = [];            // related words from the thesaurus for the compound search
+  let compoundRelatedState = "idle";   // idle | pending | ok | failed
+
+  function compoundBreakdownHtml(seq){
+    return seq.map(u => {
+      if(u.type === "marker") return `<span class="m">→pos${u.targetPos}</span>`;
+      const gloss = findGlossAt(u.pos, u.c, u.v) || "?";
+      return `pos${u.pos}:${gloss}`;
+    }).join(" + ");
+  }
+
+  function renderCompoundList(){
+    const el = document.getElementById("compound-list");
+    const statusEl = document.getElementById("compound-search-status");
+    if(!el) return;
+    const term = compoundSearchTerm.trim().toLowerCase();
+    // direct hits (substring, or word-level related) first; then hits for thesaurus-related words, marked "≈"
+    const direct = new Set(), related = new Set();
+    Object.keys(COMPOUND_DICT).forEach(w => {
+      const sec = secondaryForCompound(w);
+      if(!term || w.includes(term) || sec.some(x => x.includes(term)) || glossesRelated(w, term) || sec.some(x => glossesRelated(x, term))) direct.add(w);
+      else if(compoundRelated.some(r => glossesRelated(w, r) || sec.some(x => glossesRelated(x, r)))) related.add(w);
+    });
+    const words = [...Array.from(direct).sort(), ...Array.from(related).sort()];
+
+    if(statusEl) statusEl.textContent = term ? `${direct.size} match${direct.size===1?"":"es"}` + (related.size ? ` + ${related.size} related` : "") : (Object.keys(COMPOUND_DICT).length ? `${Object.keys(COMPOUND_DICT).length} tracked` : "");
+
+    if(!Object.keys(COMPOUND_DICT).length){
+      el.innerHTML = `<div class="compound-empty">No compounds loaded. Compounds are held only in the spreadsheet (its "Compound Words" tab), never in this program — use the spreadsheet import above to load them.</div>`;
+      return;
+    }
+    if(!words.length){
+      el.innerHTML = `<div class="compound-empty">No compound words match "${term}".</div>`;
+      return;
+    }
+
+    const SHOW_MAX = 300;
+    const shown = words.slice(0, SHOW_MAX);
+    let html = words.length > SHOW_MAX ? `<div class="compound-empty">Showing the first ${SHOW_MAX} of ${words.length} — type in the search box to narrow it.</div>` : "";
+    html += `<table class="compound-table"><thead><tr><th>Word</th><th>Full form</th><th>Breakdown</th><th></th></tr></thead><tbody>`;
+    shown.forEach(w => {
+      const seq = COMPOUND_DICT[w];
+      const fullForm = seq.map(u => u.type==="marker" ? u.v : (u.c+u.v)).join("");
+      html += `<tr>
+        <td class="compound-word">${related.has(w) ? '<span class="th-related" title="matched through a related word">≈ </span>' : ""}${w}${secondaryForCompound(w).length ? `<div class="compound-secondary">also: ${secondaryForCompound(w).map(escHtml).join(", ")}</div>` : ""}</td>
+        <td class="compound-form">${ipaWord(fullForm)}</td>
+        <td class="compound-breakdown">${compoundBreakdownHtml(seq)}</td>
+        <td style="white-space:nowrap;"><button class="compound-del" data-sec-compound="${escHtml(w)}">meanings</button> <button class="compound-del" data-del-compound="${w}">remove</button></td>
+      </tr>`;
+    });
+    html += `</tbody></table>`;
+    el.innerHTML = html;
+
+    el.querySelectorAll("[data-sec-compound]").forEach(btn => {
+      btn.addEventListener("click", () => openCompoundSecondaryModal(btn.dataset.secCompound));
+    });
+    el.querySelectorAll("[data-del-compound]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        pushUndoSnapshot();
+        delete COMPOUND_DICT[btn.dataset.delCompound];
+        delete SECONDARY.compound[btn.dataset.delCompound];
+        saveAll();
+        renderCompoundList();
+      });
+    });
+  }
+
+  function openCompoundSecondaryModal(word){
+    closeModal();
+    const cur = secondaryForCompound(word);
+    const ov = document.createElement("div");
+    ov.id = "modal-overlay";
+    ov.className = "modal-overlay";
+    ov.innerHTML = `
+      <div class="modal-box">
+        <h3>Compound "${escHtml(word)}" · secondary meanings</h3>
+        <div class="modal-sub">extra meanings this whole word also carries</div>
+        <input type="text" id="modal-sec-input" value="${escHtml(cur.join(", "))}" placeholder="e.g. cook, ignite — comma-separated" autocomplete="off">
+        <div id="modal-sec-thesaurus-hint"></div>
+        <div class="modal-help">Separate with commas or semicolons. Leave empty to remove them all.</div>
+        <div class="modal-actions">
+          <button class="modal-btn primary" id="modal-sec-save">save</button>
+          <button class="modal-btn ghost" id="modal-sec-cancel">cancel</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    ov.addEventListener("click", (e) => { if(e.target === ov) closeModal(); });
+    const input = document.getElementById("modal-sec-input");
+    attachThesaurusHint(input, document.getElementById("modal-sec-thesaurus-hint"), {list:true, exclude: word});
+    input.focus(); input.select();
+    input.addEventListener("keydown", (e) => {
+      if(e.key === "Enter") document.getElementById("modal-sec-save").click();
+      if(e.key === "Escape") closeModal();
+    });
+    document.getElementById("modal-sec-save").addEventListener("click", () => {
+      pushUndoSnapshot();
+      setSecondaryForCompound(word, parseSecondaryInput(input.value, word));
+      saveAll();
+      closeModal();
+      renderAll();
+    });
+    document.getElementById("modal-sec-cancel").addEventListener("click", closeModal);
+  }
+
+  function initCompoundSearch(){
+    const input = document.getElementById("compound-search");
+    if(!input) return;
+    const hintEl = document.getElementById("compound-search-thesaurus-hint");
+    let timer = null, seq = 0;
+    const paint = () => { renderCompoundList(); if(hintEl) hintEl.innerHTML = searchThesaurusHTML(compoundSearchTerm, compoundRelated, compoundRelatedState); };
+    input.addEventListener("input", (e) => {
+      compoundSearchTerm = e.target.value;
+      const term = compoundSearchTerm.trim();
+      clearTimeout(timer);
+      const mySeq = ++seq;              // every keystroke invalidates in-flight lookups
+      compoundRelated = [];
+      compoundRelatedState = term.length >= 2 ? "pending" : "idle";
+      paint();
+      if(term.length < 2) return;
+      timer = setTimeout(async () => {
+        const words = await fetchThesaurusSuggestions(term);
+        if(mySeq !== seq) return;
+        compoundRelated = words || [];
+        compoundRelatedState = words === null ? "failed" : "ok";
+        paint();
+      }, 400);
+    });
+    if(hintEl) hintEl.addEventListener("click", (e) => {
+      const link = e.target.closest(".th-link");
+      if(!link) return;
+      input.value = link.dataset.q;
+      input.dispatchEvent(new Event("input"));
+    });
+  }
+
+  /* ============================== ADD COMPOUND WORD DIRECTLY (no verb/noun attached) ============ */
+  let compoundDraft = { id:"draft", rootSeq:[], _addMode:"content", _pendingMarker:null };
+  let compoundDraftWord = "";
+  let compoundDraftSecondary = "";
+
+  function renderCompoundAddPanel(){
+    const el = document.getElementById("compound-add-panel");
+    if(!el) return;
+    let html = `<div class="root-name-row"><label>New compound word (English)</label>
+      <input type="text" placeholder="e.g. burn" id="compound-draft-word" value="${compoundDraftWord}">
+    </div>
+    <div id="compound-thesaurus-hint"></div>
+    <div class="root-name-row"><label>Secondary meanings (optional)</label>
+      <input type="text" placeholder="e.g. cook, ignite — comma-separated" id="compound-draft-secondary" value="${escHtml(compoundDraftSecondary)}">
+    </div>
+    <div id="compound-secondary-thesaurus-hint"></div>`;
+    html += renderSyllableBuilder(compoundDraft);
+    html += `<div class="compound-add-actions">
+      <button class="add-btn" id="compound-draft-save">+ save as compound word</button>
+      ${compoundDraft.rootSeq.length ? '<button class="add-btn" id="compound-draft-clear">clear draft</button>' : ""}
+    </div>`;
+    el.innerHTML = html;
+    wireCompoundDraftEvents();
+  }
+
+  function wireCompoundDraftEvents(){
+    const el = document.getElementById("compound-add-panel");
+    if(!el) return;
+
+    const wordInput = document.getElementById("compound-draft-word");
+    if(wordInput){
+      wordInput.addEventListener("input", (e) => { compoundDraftWord = e.target.value; });
+      wordInput.addEventListener("change", (e) => {
+        // typing a name that already matches a tracked compound loads it for editing
+        const key = e.target.value.trim().toLowerCase();
+        if(key && COMPOUND_DICT[key]){
+          compoundDraft.rootSeq = COMPOUND_DICT[key].map(u => ({...u}));
+          compoundDraftSecondary = secondaryForCompound(key).join(", ");
+          renderCompoundAddPanel();
+        }
+      });
+      attachThesaurusHint(wordInput, document.getElementById("compound-thesaurus-hint"));
+    }
+
+    const secDraftInput = document.getElementById("compound-draft-secondary");
+    if(secDraftInput){
+      secDraftInput.addEventListener("input", (e) => { compoundDraftSecondary = e.target.value; });
+      attachThesaurusHint(secDraftInput, document.getElementById("compound-secondary-thesaurus-hint"), {list:true, exclude: () => compoundDraftWord.trim()});
+    }
+
+    el.querySelectorAll("[data-syll-new]").forEach(inp => {
+      attachThesaurusHint(inp, document.getElementById(`syll-thesaurus-hint-${inp.dataset.syllNew}`), {pos: Number(inp.dataset.newPos)});
+      inp.addEventListener("change", (e) => {
+        const pos = Number(inp.dataset.newPos);
+        const gloss = e.target.value.trim();
+        if(!gloss) return;
+        const cell = lookupOrAllocate(pos, gloss);
+        if(!cell){ alert(`Position ${pos}'s ledger is full — no open syllables left.`); return; }
+        compoundDraft.rootSeq.push({type:"content", pos, c:cell.c, v:cell.v});
+        compoundDraft._addMode = "content";
+        renderAll(); // a new syllable may have been allocated — refresh the ledger too
+      });
+    });
+    el.querySelectorAll("[data-mode-node]").forEach(btn => {
+      btn.addEventListener("click", () => { compoundDraft._addMode = btn.dataset.mode; renderCompoundAddPanel(); });
+    });
+    el.querySelectorAll("[data-marker-add]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const sel = el.querySelector("select[data-marker-select]");
+        const v = sel ? sel.value : MARKER_VOWELS[0];
+        compoundDraft.rootSeq.push({type:"marker", targetPos: MARKER_TARGET[v], v});
+        compoundDraft._pendingMarker = null;
+        renderCompoundAddPanel();
+      });
+    });
+    el.querySelectorAll("[data-marker-select]").forEach(sel => {
+      sel.addEventListener("change", (e) => { compoundDraft._pendingMarker = e.target.value; });
+    });
+    el.querySelectorAll("[data-syll-remove]").forEach(btn => {
+      btn.addEventListener("click", () => { compoundDraft.rootSeq.pop(); renderCompoundAddPanel(); });
+    });
+
+    const saveBtn = document.getElementById("compound-draft-save");
+    if(saveBtn) saveBtn.addEventListener("click", () => {
+      const word = compoundDraftWord.trim().toLowerCase();
+      if(!word){ alert("Give the compound word a name first."); return; }
+      if(!compoundDraft.rootSeq.length){ alert("Add at least one syllable first."); return; }
+      pushUndoSnapshot();
+      COMPOUND_DICT[word] = compoundDraft.rootSeq.map(u => ({...u}));
+      setSecondaryForCompound(word, parseSecondaryInput(compoundDraftSecondary, word));
+      saveAll();
+      compoundDraft = { id:"draft", rootSeq:[], _addMode:"content", _pendingMarker:null };
+      compoundDraftWord = "";
+      compoundDraftSecondary = "";
+      renderAll();
+    });
+    const clearBtn = document.getElementById("compound-draft-clear");
+    if(clearBtn) clearBtn.addEventListener("click", () => {
+      compoundDraft = { id:"draft", rootSeq:[], _addMode:"content", _pendingMarker:null };
+      compoundDraftSecondary = "";
+      renderCompoundAddPanel();
+    });
+  }
+
+  /* ============================== RENDER: BUILDER ============================== */
+  function renderGrammarField(node, cat){
+    if(cat.key === "type" && node.forceCase){
+      const opt = cat.options.find(o => o.key === node.forceCase);
+      return `<div class="g-field fixed"><label>${cat.label}</label><div class="fixed-val">${opt.label} <span style="color:var(--muted)">(fixed by role)</span></div></div>`;
+    }
+    const opts = cat.options.map(o => `<option value="${o.key}" ${node.grammar[cat.key]===o.key?"selected":""}>${o.label}</option>`).join("");
+    return `<div class="g-field"><label>${cat.label}</label><select data-node="${node.id}" data-cat="${cat.key}">${opts}</select></div>`;
+  }
+
+  const MAX_UNITS = 8; // markers + content syllables together
+
+  function renderSyllableBuilder(node){
+    const seq = node.rootSeq;
+    const nextPos = nextEffectivePos(seq);
+    let html = `<div class="syll-builder" data-syllbuilder="${node.id}">`;
+
+    // already-built units, read-only chips (append-only editing keeps positions from going stale)
+    seq.forEach((u, i) => {
+      if(u.type === "marker"){
+        html += `<div class="syll-slot"><label>marker</label>
+          <span class="out marker-chip">${u.v} → pos ${u.targetPos}</span></div>`;
+      } else {
+        const gloss = findGlossAt(u.pos, u.c, u.v) || "?";
+        html += `<div class="syll-slot"><label>pos ${u.pos}${u.pos===1?" (head)":" (mod.)"}</label>
+          <span class="out">${gloss}<br>${ipa(u.c+u.v)}</span></div>`;
+      }
+    });
+
+    if(seq.length > 0){
+      html += `<button class="syll-remove" data-syll-remove="${node.id}">− remove last</button>`;
+    }
+
+    // recognise saved compound words that this combination lines up with
+    if(seq.length > 0){
+      const isDraft = node === compoundDraft;
+      const own = isDraft ? compoundDraftWord : (node._loadedFromDict ? node._compoundKey : node.english);
+      const m = findMatchingCompounds(seq, own);
+      const note = (k, kind) => {
+        const lab = kind === "exact" ? "this is the existing compound" : "sounds identical to the compound";
+        const use = (!isDraft && !node.english && kind === "exact")
+          ? ` <button type="button" class="add-btn" data-use-compound="${node.id}" data-compound-key="${escHtml(k)}" style="font-size:0.64rem; padding:2px 7px;">use as label</button>` : "";
+        return `<div style="flex-basis:100%; font-family:var(--mono); font-size:0.7rem; color:var(--p2); margin-top:4px;">✓ ${lab} <b>${escHtml(k)}</b>${use}</div>`;
+      };
+      html += m.exact.map(k => note(k, "exact")).join("") + m.sound.map(k => note(k, "sound")).join("");
+    }
+
+    // pending "add next unit" controls
+    if(seq.length < MAX_UNITS){
+      const mode = node._addMode || "content";
+      html += `<div class="syll-slot">
+        <label>add next</label>
+        <div style="display:flex; gap:4px;">
+          <button type="button" class="syll-mode-btn ${mode==='content'?'on':''}" data-mode-node="${node.id}" data-mode="content">syllable</button>
+          <button type="button" class="syll-mode-btn ${mode==='marker'?'on':''}" data-mode-node="${node.id}" data-mode="marker">marker</button>
+        </div>`;
+      if(mode === "marker"){
+        const defaultV = node._pendingMarker || MARKER_VOWELS.find(v => MARKER_TARGET[v] === nextPos) || MARKER_VOWELS[0];
+        const opts = MARKER_VOWELS.map(v => `<option value="${v}" ${v===defaultV?"selected":""}>${v} → pos ${MARKER_TARGET[v]}</option>`).join("");
+        html += `<select data-marker-select="${node.id}" style="margin-top:4px; background:var(--ink); border:1px solid var(--line); color:var(--text); border-radius:4px; padding:5px;">${opts}</select>
+          <button type="button" class="syll-add-btn" data-marker-add="${node.id}" style="margin-top:4px;">+ insert marker</button>`;
+      } else {
+        html += `<label style="margin-top:4px;">will read from pos ${nextPos}</label>
+          <input type="text" placeholder="english gloss…" data-syll-new="${node.id}" data-new-pos="${nextPos}" list="pos-list-${nextPos}">
+          <div id="syll-thesaurus-hint-${node.id}"></div>`;
+      }
+      html += `</div>`;
+    }
+
+    html += `</div>`;
+    return html;
+  }
+
+  function renderNode(node, depth){
+    const cats = node.wordType === "verb" ? VERB_CATEGORIES : NOUN_CATEGORIES;
+    const slots = slotsFor(node);
+    const rs = rootSyllableString(node);
+
+    let html = `<div class="node type-${node.wordType}" id="node-${node.id}">`;
+    html += `<div class="node-head">`;
+    html += `<span class="wt-badge ${node.wordType}">${node.wordType}</span>`;
+    html += `<span class="role-badge">${node.role}</span>`;
+    if(node.role !== "root") html += `<button class="remove-btn" data-remove="${node.id}">remove</button>`;
+    html += `</div>`;
+
+    html += `<div class="root-name-row"><label>Whole-word label (optional, for reuse)</label>
+      <input type="text" placeholder="e.g. burn" value="${node.english}" data-root-name="${node.id}">
+      ${rs ? `<span style="font-family:var(--mono); color:var(--root); font-size:1.05rem;">${ipa(rs)}</span>` : `<span style="color:var(--muted); font-size:0.8rem;">build below, syllable by syllable</span>`}
+    </div>
+    <div id="rootname-thesaurus-hint-${node.id}"></div>`;
+
+    if(node._loadedFromDict && node._compoundKey && COMPOUND_DICT[node._compoundKey]){
+      if(compoundSeqEqual(node.rootSeq, COMPOUND_DICT[node._compoundKey])){
+        html += `<div style="font-family:var(--mono); font-size:0.68rem; color:var(--muted); margin:-6px 0 10px;">🔒 loaded from the compound-word dictionary — editing the syllables below only changes this instance, not the saved word.</div>`;
+      } else {
+        html += `<div style="font-family:var(--mono); font-size:0.68rem; color:var(--p2); margin:-6px 0 10px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          ✎ edited — no longer matches the saved "${node._compoundKey}" in the dictionary.
+          <button class="add-btn" data-update-compound="${node.id}" style="font-size:0.66rem; padding:3px 8px;">update dictionary to match</button>
+        </div>`;
+      }
+    }
+
+    html += renderSyllableBuilder(node);
+
+    html += `<div class="grammar-grid">` + cats.map(cat => renderGrammarField(node, cat)).join("") + `</div>`;
+
+    const wordParts = computeWord(node);
+    const fluent = wordParts.map(p => p.text).join("");
+    const fluentDisplay = fluent || '<em style="color:var(--muted)">— nothing yet —</em>';
+    const rootPart = wordParts.find(p => p.isRoot);
+    const prefixPart = wordParts.find(p => p.isPrefix);
+    let breakdown = "";
+    if(rootPart) breakdown += `<div><span class="rootm">${rootPart.text}</span> = ${rootPart.gloss}</div>`;
+    if(rootPart && rootPart.fusionDecomposition && rootPart.fusionDecomposition.length){
+      breakdown += `<table style="width:100%; margin-top:4px; border-collapse:collapse;">` + rootPart.fusionDecomposition.map(d =>
+        `<tr><td style="padding:1px 8px 1px 0; color:var(--muted); font-size:0.7rem;">fusional</td><td style="padding:1px 8px 1px 0; color:var(--root); font-size:0.7rem;">${d.label}</td><td style="padding:1px 0; font-size:0.7rem;">${d.choice} — ${d.realized}</td></tr>`
+      ).join("") + `</table>`;
+    }
+    if(prefixPart){
+      breakdown += `<div style="margin-top:6px;"><span class="morph">${prefixPart.text}</span> = prefix phrase, ${prefixPart.decomposition.length} categories:</div>`;
+      breakdown += `<table style="width:100%; margin-top:4px; border-collapse:collapse;">` + prefixPart.decomposition.map(d =>
+        `<tr><td style="padding:1px 8px 1px 0; color:var(--gram); font-size:0.7rem;">${d.label}</td><td style="padding:1px 0; font-size:0.7rem;">${d.choice} — ${d.realized}</td></tr>`
+      ).join("") + `</table>`;
+    } else if(rootPart) {
+      const anyFused = (rootPart.fusionDecomposition||[]).some(d => !/unmarked/.test(d.realized));
+      if(!anyFused) breakdown += `<div style="margin-top:4px; color:var(--muted); font-size:0.72rem;">all remaining grammar at baseline — no prefix phrase needed</div>`;
+    }
+    html += `<div class="word-output"><div class="fluent">${fluentDisplay}</div><div class="breakdown">${breakdown}</div></div>`;
+
+    const availableSlots = slots.filter(s => !node.children[s.key]);
+    if(availableSlots.length){
+      html += `<div class="add-buttons">` + availableSlots.map(s =>
+        `<button class="add-btn" data-add-node="${node.id}" data-add-slot="${s.key}">+ ${s.label} (${s.wordType})</button>`
+      ).join("") + `</div>`;
+    }
+
+    slots.forEach(s => {
+      const child = node.children[s.key];
+      if(child) html += `<div class="children-slot">${renderNode(child, depth+1)}</div>`;
+    });
+
+    html += `</div>`;
+    return html;
+  }
+
+  function renderBuilder(){
+    const el = document.getElementById("builder");
+    if(!tree){ el.innerHTML = `<p class="note">Choose Verb or Noun above to start a phrase.</p>`; return; }
+    el.innerHTML = renderNode(tree, 0);
+
+    el.querySelectorAll("[data-root-name]").forEach(inp => {
+      attachThesaurusHint(inp, document.getElementById(`rootname-thesaurus-hint-${inp.dataset.rootName}`), {exclude: inp.value.trim()});
+      inp.addEventListener("change", (e) => {
+        const node = findNode(tree, Number(inp.dataset.rootName));
+        const val = e.target.value.trim();
+        node.english = val;
+        const key = val.toLowerCase();
+        if(key && COMPOUND_DICT[key]){
+          // Loading an existing compound word: pull in its syllables and remember where they
+          // came from, so further edits here are treated as a local copy, not a redefinition.
+          node.rootSeq = COMPOUND_DICT[key].map(s => ({...s}));
+          node._compoundKey = key;
+          node._loadedFromDict = true;
+        } else {
+          node._compoundKey = null;
+          node._loadedFromDict = false;
+        }
+        renderAll();
+      });
+    });
+
+    // Auto-saves into the dictionary while a *brand-new* compound is actively being composed in
+    // this node (exactly the old "name it and it's tracked" behaviour). But once a node has
+    // *loaded* an existing compound from the dictionary (node._loadedFromDict), further syllable
+    // edits stay local to this one instance of the word in the builder — they never silently
+    // rewrite the saved definition. Explicitly clicking "update dictionary to match" is the only
+    // way to push those local edits back into the cemented entry.
+    function syncCompound(node){
+      if(!node.english) return;
+      if(node._loadedFromDict) return; // cemented — came from the dictionary, don't auto-overwrite
+      pushUndoSnapshot();
+      const key = node.english.toLowerCase();
+      COMPOUND_DICT[key] = node.rootSeq.map(u => ({...u}));
+      node._compoundKey = key;
+      saveAll();
+    }
+
+    el.querySelectorAll("[data-update-compound]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const node = findNode(tree, Number(btn.dataset.updateCompound));
+        if(!node._compoundKey) return;
+        pushUndoSnapshot();
+        COMPOUND_DICT[node._compoundKey] = node.rootSeq.map(u => ({...u}));
+        saveAll();
+        renderAll();
+      });
+    });
+
+    // adopt a recognised compound word as this node's label
+    el.querySelectorAll("[data-use-compound]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const node = findNode(tree, Number(btn.dataset.useCompound));
+        const key = btn.dataset.compoundKey;
+        if(!node || !COMPOUND_DICT[key]) return;
+        node.english = key; node._compoundKey = key; node._loadedFromDict = true;
+        renderAll();
+      });
+    });
+
+    // append a new content syllable at the position shown ("will read from pos N")
+    el.querySelectorAll("[data-syll-new]").forEach(inp => {
+      attachThesaurusHint(inp, document.getElementById(`syll-thesaurus-hint-${inp.dataset.syllNew}`), {pos: Number(inp.dataset.newPos)});
+      inp.addEventListener("change", (e) => {
+        const node = findNode(tree, Number(inp.dataset.syllNew));
+        const pos = Number(inp.dataset.newPos);
+        const gloss = e.target.value.trim();
+        if(!gloss) return;
+        const cell = lookupOrAllocate(pos, gloss);
+        if(!cell){ alert(`Position ${pos}'s ledger is full — no open syllables left.`); return; }
+        node.rootSeq.push({type:"content", pos, c:cell.c, v:cell.v});
+        node._addMode = "content";
+        syncCompound(node);
+        renderAll();
+      });
+    });
+
+    // toggle pending-add mode between "syllable" and "marker"
+    el.querySelectorAll("[data-mode-node]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const node = findNode(tree, Number(btn.dataset.modeNode));
+        node._addMode = btn.dataset.mode;
+        renderAll();
+      });
+    });
+
+    // append a position-marker unit
+    el.querySelectorAll("[data-marker-add]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const node = findNode(tree, Number(btn.dataset.markerAdd));
+        const sel = el.querySelector(`select[data-marker-select="${btn.dataset.markerAdd}"]`);
+        const v = sel ? sel.value : MARKER_VOWELS[0];
+        node.rootSeq.push({type:"marker", targetPos: MARKER_TARGET[v], v});
+        node._pendingMarker = null;
+        syncCompound(node);
+        renderAll();
+      });
+    });
+    el.querySelectorAll("[data-marker-select]").forEach(sel => {
+      sel.addEventListener("change", (e) => {
+        const node = findNode(tree, Number(sel.dataset.markerSelect));
+        node._pendingMarker = e.target.value;
+      });
+    });
+
+    el.querySelectorAll("[data-syll-remove]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const node = findNode(tree, Number(btn.dataset.syllRemove));
+        node.rootSeq.pop();
+        syncCompound(node);
+        renderAll();
+      });
+    });
+
+    el.querySelectorAll("select[data-node]").forEach(sel => {
+      sel.addEventListener("change", (e) => {
+        const node = findNode(tree, Number(sel.dataset.node));
+        node.grammar[sel.dataset.cat] = e.target.value;
+        renderAll();
+      });
+    });
+    el.querySelectorAll("[data-add-node]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const node = findNode(tree, Number(btn.dataset.addNode));
+        const slot = slotsFor(node).find(s => s.key === btn.dataset.addSlot);
+        node.children[slot.key] = newNode(slot.wordType, slot.label, slot.forceCase);
+        renderAll();
+      });
+    });
+    el.querySelectorAll("[data-remove]").forEach(btn => {
+      btn.addEventListener("click", () => { removeNode(tree, Number(btn.dataset.remove)); renderAll(); });
+    });
+  }
+
+  /* ============================== RENDER: FINAL PHRASE ============================== */
+  function renderPhrase(){
+    const el = document.getElementById("phrase-panel");
+    if(!tree){
+      el.innerHTML = `<span style="color:var(--muted)">Nothing built yet.</span>`;
+      return;
+    }
+    const order = [];
+    traverseOrdered(tree, order);
+    const wordsLatin = order.map(n => computeWord(n, false));
+    const wordsIpa = order.map(n => computeWord(n, true));
+    const words = ipaMode ? wordsIpa : wordsLatin;   // the gloss line follows the IPA toggle
+    const join = ws => ws.map(w => w.map(p=>p.text).join("")).join("  ");
+    const fluentPhrase = join(wordsLatin), fluentIpa = join(wordsIpa);
+
+    let html = `<div class="phrase-row"><span class="row-tag">written</span><div class="big">${fluentPhrase || "<em>—</em>"}</div>`;
+    html += `<button class="copy-btn" id="copy-latin-btn">copy</button></div>`;
+    html += `<div class="phrase-row ipa-row"><span class="row-tag">IPA</span><div class="big">${fluentIpa ? "/" + fluentIpa + "/" : "<em>—</em>"}</div>`;
+    html += `<button class="copy-btn" id="copy-ipa-btn">copy</button></div>`;
+    html += `<div class="gloss-line">`;
+    order.forEach((node, i) => {
+      const w = words[i];
+      const top = w.map(p=>p.text).join("+") || "∅";
+      const bottom = w.map(p => `<span class="${p.isRoot?'r':'m'}">${p.gloss}</span>`).join("+") || "";
+      html += `<div class="gloss-word"><span class="top">${top}</span><span class="bottom">${bottom}</span></div>`;
+    });
+    html += `</div>`;
+    el.innerHTML = html;
+    document.getElementById("copy-latin-btn").addEventListener("click", (e) => copyText(fluentPhrase, e.target));
+    document.getElementById("copy-ipa-btn").addEventListener("click", (e) => copyText(fluentIpa, e.target));
+  }
+
+  /* ============================== DATALISTS ============================== */
+  function renderDatalists(){
+    POSITIONS.forEach(pos => {
+      let dl = document.getElementById("pos-list-"+pos);
+      if(!dl){ dl = document.createElement("datalist"); dl.id = "pos-list-"+pos; document.body.appendChild(dl); }
+      const primaries = Object.keys(POSITION_DICT[pos]);
+      let opts = primaries.sort().map(w => `<option value="${w}">`).join("");
+      // secondary meanings autocomplete too, labelled with the root they resolve to
+      Object.entries(POSITION_DICT[pos]).forEach(([g, cell]) => {
+        secondaryForCell(pos, cell.c, cell.v).forEach(sec => {
+          if(!POSITION_DICT[pos][sec]) opts += `<option value="${escHtml(sec)}" label="${escHtml(g)} (secondary)">`;
+        });
+      });
+      dl.innerHTML = opts;
+    });
+  }
+
+  /* ============================== GRAMMAR REFERENCE ============================== */
+  function renderGrammarRef(){
+    const el = document.getElementById("grammar-ref");
+    function encLabel(cat){
+      if(cat.encType === "fuseTone") return `tone on syllable ${cat.host}` + (cat.options.some(o => o.overflow) ? ` (rest: prefix pos. ${cat.overflowPos})` : "");
+      if(cat.encType === "fuseCoda") return `coda on syllable ${cat.host}`;
+      if(cat.encType === "comboCoda") return `coda on syllable ${cat.host} (combined)`;
+      if(cat.encType === "vowelPattern") return "prefix vowel pattern";
+      return `prefix consonant — position ${cat.prefixPos}`;
+    }
+    function valDisplay(cat, opt){
+      if(opt.key === cat.def) return "unmarked (default)";
+      if(cat.encType === "fuseTone"){
+        if(opt.overflow){
+          const idx = cat.options.filter(o => o.overflow).findIndex(o => o.key === opt.key);
+          return `prefix onset "${ipa(PREFIX_ONSETS[idx])}" at position ${cat.overflowPos}`;
+        }
+        return `${opt.tone} tone (syll. ${cat.host})`;
+      }
+      if(cat.encType === "fuseCoda") return `coda "${ipa(opt.coda)}" (syll. ${cat.host})`;
+      if(cat.encType === "comboCoda") return "feeds the combined syll.-2 coda (table below)";
+      const nd = cat.options.filter(o => o.key !== cat.def);
+      const idx = nd.findIndex(o => o.key === opt.key);
+      if(cat.encType === "vowelPattern"){ const p = VOWEL_PATTERNS[idx]; return `vowel pattern ${p[0]}–${p[1]}`; }
+      return `prefix onset "${ipa(PREFIX_ONSETS[idx])}" at position ${cat.prefixPos}`;
+    }
+    function block(title, cats, comboKey){
+      let html = `<details class="ref"><summary>${title}: category → encoding → value</summary>`;
+      html += `<table class="refTable"><thead><tr><th>Category</th><th>Encoding</th><th>Option</th><th>Realized as</th></tr></thead><tbody>`;
+      cats.forEach(cat => {
+        cat.options.forEach((o,i) => {
+          html += `<tr>${i===0?`<td rowspan="${cat.options.length}">${cat.label}${cat.mandatory?" *":""}</td><td rowspan="${cat.options.length}">${encLabel(cat)}</td>`:""}<td>${o.label.replace(" (default)","")}</td><td class="suf">${valDisplay(cat,o)}</td></tr>`;
+        });
+      });
+      html += `</tbody></table>`;
+      html += `<table class="refTable" style="margin-top:8px;"><thead><tr><th>Syllable-2 coda: combination</th><th>Coda</th></tr></thead><tbody>` +
+        COMBO_TABLES[comboKey].map(r => `<tr><td>${r[0]}</td><td class="suf">${r[1] === "(none)" ? r[1] : ipa(r[1])}</td></tr>`).join("") + `</tbody></table>`;
+      if(title === "Noun") html += '<p style="font-size:0.72rem; color:var(--muted); margin-top:6px;">* Type (case) is present in every noun, but nominative is its default like any other category.</p>';
+      html += `</details>`;
+      return html;
+    }
+    el.innerHTML = block("Verb", VERB_CATEGORIES, "verbNegTense") + block("Noun", NOUN_CATEGORIES, "nounCoda2");
+  }
+
+  function renderIpaRef(){
+    const el = document.getElementById("ipa-ref");
+    const tbl = (head, rows) => `<table class="refTable"><thead><tr>${head.map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>` +
+      rows.map(r => `<tr>${r.map((c,i) => `<td${i ? ' class="suf"' : ''}>${c}</td>`).join("")}</tr>`).join("") + `</tbody></table>`;
+    const word = (pre, root) => { pre = pre.normalize("NFD"); root = root.normalize("NFD"); const b = breakVowelClusters(pre, root); const w = toIPAWord(b.prefix, b.root); return [pre ? pre + " + " + root : root, w.prefix + w.root]; };
+
+    const cons = ["t","d","s","z","g","k","ch","j","ç","w","f","v","n","l","m","hl","hm"].map(c => [c, toIPA(c)]);
+    const vows = ["a","i","u","e","o","ë","ü","a-","i-","u-","e-","o-"].map(v => [v, toIPA(v)]);
+    const glides = VOWEL_LETTERS.split("").map(v => [v + GLIDE_MARK, GLIDE_ONSET[v] + BASE_IPA_V[v]]);
+
+    const codas = [
+      ["w", "w", "ʍ"], ["l", "l", "ɬ"], ["x", "ɣ", "x"], ["m", "m", "m̥  (and ŋ ɱ ɲ before k g / f v / ch j)"], ["ʼ", "ʔ or creaky voice", "ʔ"],
+    ];
+
+    const ex = {
+      stress: [word("sa","tuta"), word("","tuta"), word("ani","tasu")],
+      asp:    [word("","tasi"), word("","kasi")],
+      c:      [word("","çaçi"), word("","çeço")],
+      flap:   [word("","tada"), word("","tuda")],
+      coda:   [word("","talta"), word("","talda"), word("","tawsa"), word("","tawza"), word("","taxka"), word("","taxga")],
+      nasal:  [word("","tamka"), word("","tamga"), word("","tamfa"), word("","tamcha"), word("","tamda")],
+      glot:   [word("","tasiʼ"), word("","taʼda"), word("","taʼta"), word("","taʼ") ],
+      vinit:  [word("","asu"), word("","ita"), word("a","asu")],
+      clus:   [word("aa","atu"), word("ia","atu"), word("aaa","ta")],
+      tone:   [word("","tádi"), word("","tàdi"), word("","tá-di"), word("","tà-di"), word("","te̋di"), word("","tȅdi") ],
+    };
+    const exTbl = (list) => tbl(["Written","IPA"], list);
+
+    el.innerHTML =
+      `<details class="ref" open><summary>Sounds</summary>` +
+        `<div style="display:flex; gap:18px; flex-wrap:wrap;">` +
+          `<div>${tbl(["Consonant","IPA"], cons)}</div>` +
+          `<div>${tbl(["Vowel","IPA"], vows)}<p style="font-size:0.72rem;color:var(--muted);">ü is the vowel [ɰ]; ë is [ə]. Neither can be long.</p></div>` +
+          `<div>${tbl(["Coda","Usual","Before voiceless"], codas)}</div>` +
+          `<div>${tbl(["Third vowel","Reads as"], glides)}</div>` +
+        `</div></details>` +
+      `<details class="ref"><summary>Stress and vowels</summary>` +
+        `<p style="font-size:0.78rem;">Stress falls on the first syllable of the root; the grammar prefix is unstressed. Unstressed <i>short</i> vowels relax: i u e o → ɪ ʊ ɛ ɔ. Long vowels, ë [ə] and ü [ɰ] do not, and a stays [a] so that it never merges with ë in a prefix.</p>` +
+        exTbl(ex.stress) + `</details>` +
+      `<details class="ref"><summary>Tone</summary>` +
+        `<p style="font-size:0.78rem;">On a short vowel, rising is a level high pitch and falling a level low pitch. On a long vowel they are true contours (rising ǎː, falling âː). ë and ü use the double marks e̋ ȅ / ű ȕ.</p>` +
+        exTbl(ex.tone) + `</details>` +
+      `<details class="ref"><summary>Consonant allophony</summary>` +
+        `<p style="font-size:0.78rem;"><b>Aspiration:</b> t and k are aspirated at the start of the stressed syllable.</p>` + exTbl(ex.asp) +
+        `<p style="font-size:0.78rem;"><b>ç:</b> [x] before a o u ü, [ç] elsewhere.</p>` + exTbl(ex.c) +
+        `<p style="font-size:0.78rem;"><b>Flap:</b> an unstressed d between vowels is [ɾ].</p>` + exTbl(ex.flap) + `</details>` +
+      `<details class="ref"><summary>Codas</summary>` +
+        `<p style="font-size:0.78rem;"><b>Voicing agreement:</b> a coda takes the voicing of the consonant after it (a vowel, pause or voiced consonant is voiced). Before a voiceless consonant, w → ʍ, l → ɬ, m → m̥ and x → [x]; otherwise x is [ɣ].</p>` + exTbl(ex.coda) +
+        `<p style="font-size:0.78rem;"><b>Nasal place:</b> coda m takes the place of a following k g (ŋ), f v (ɱ) or ch j (ɲ).</p>` + exTbl(ex.nasal) +
+        `<p style="font-size:0.78rem;"><b>Glottal coda ʼ:</b> before a voiceless consonant or a vowel it is a true glottal stop [ʔ]. Before a voiced consonant, or at the end of a word, it is not pronounced as a stop: the vowel before it becomes creaky voiced (a̰).</p>` + exTbl(ex.glot) + `</details>` +
+      `<details class="ref"><summary>Vowel-initial roots and vowel clusters</summary>` +
+        `<p style="font-size:0.78rem;">A stressed root that starts with a vowel begins with a glottal onset [ʔ], so it never runs into a prefix vowel.</p>` + exTbl(ex.vinit) +
+        `<p style="font-size:0.78rem;">The third vowel of a run is palatalised (written a̯ etc.) and gets a voiced fricative onset, so there are never three vowels in a row.</p>` + exTbl(ex.clus) + `</details>`;
+  }
+
+  /* ============================== TOP LEVEL ============================== */
+  function renderAll(){ renderLedger(); renderCompoundAddPanel(); renderCompoundList(); renderDatalists(); renderBuilder(); renderPhrase(); renderGrammarRef(); }
+
+  document.getElementById("start-verb").addEventListener("click", () => {
+    document.getElementById("start-verb").classList.add("active");
+    document.getElementById("start-noun").classList.remove("active");
+    startTree("verb");
+  });
+  document.getElementById("start-noun").addEventListener("click", () => {
+    document.getElementById("start-noun").classList.add("active");
+    document.getElementById("start-verb").classList.remove("active");
+    startTree("noun");
+  });
+  document.getElementById("reset-btn").addEventListener("click", () => { tree = null; renderAll(); });
+  document.getElementById("example-btn").addEventListener("click", generateExampleSentence);
+  document.getElementById("ipa-toggle").addEventListener("change", (e) => { ipaMode = e.target.checked; renderAll(); });
+  document.getElementById("undo-btn").addEventListener("click", performUndo);
+
+  (async function init(){
+    await loadAll();
+    renderGrammarRef();
+    renderIpaRef();
+    initSheetZone();
+    initLedgerSearch();
+    initCompoundSearch();
+    startTree("verb");
+    refreshUndoButton();
+  })();
+
+})();
+</script>
+</body>
+</html>
